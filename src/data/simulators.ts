@@ -22,7 +22,7 @@ export const SIMULATORS: SimulatorMeta[] = [
     navLabel: 'LLM API',
     title: 'LLM API & Prompt Caching Cost Simulator',
     shortDesc:
-      'Compare OpenAI, Anthropic, Gemini, DeepSeek, and Groq monthly spend with prompt cache hit rates, reasoning multipliers, and batch discounts.',
+      'Compare OpenAI, Anthropic, Gemini, DeepSeek, xAI, and Qwen monthly spend with prompt cache hit rates, reasoning multipliers, and batch discounts.',
     ctaLabel: 'Open API simulator',
   },
   {
@@ -40,7 +40,7 @@ export const SIMULATORS: SimulatorMeta[] = [
     navLabel: 'GPU vs API',
     title: 'Self-Hosted GPU vs Managed API Break-Even',
     shortDesc:
-      'Find the exact daily token volume where renting dedicated H100, L40S, or RTX 4090 instances beats per-token managed APIs.',
+      'Find the exact daily token volume where renting dedicated B200, H200, H100, or L40S instances beats per-token managed APIs.',
     ctaLabel: 'Open break-even simulator',
   },
   {

@@ -5,7 +5,7 @@ const faqs = [
   {
     question: 'Why does TTS dominate cascaded Voice AI bills?',
     answer:
-      'In a standard STT + LLM + TTS pipeline, streaming speech-to-text (Deepgram Nova-3) and efficient LLMs (GPT-4.1 mini or Gemini 2.5 Flash) cost under $0.01/min combined, while expressive neural TTS accounts for 70%–85% of the non-telephony bill.',
+      'In a standard STT + LLM + TTS pipeline, streaming speech-to-text (Deepgram Nova-3) and efficient LLMs (GPT-5.4 mini or Gemini 3.8 Flash) cost under $0.01/min combined, while expressive neural TTS accounts for 70%–85% of the non-telephony bill.',
   },
   {
     question: 'How does Voice Activity Detection (VAD) silence trimming cut costs?',
@@ -15,7 +15,7 @@ const faqs = [
   {
     question: 'When should teams choose Native Speech-to-Speech over a cascaded stack?',
     answer:
-      'Native S2S models (OpenAI Realtime, Gemini Live) preserve tone, laughter, and barge-in latency under 350ms without text-bottleneck loss. Cascaded stacks remain preferred when you need strict transcript auditing, custom pronunciation dictionaries, or lowest per-minute cost.',
+      'Native S2S models (OpenAI gpt-realtime-2.1, Gemini 3.8 Live API) preserve tone, laughter, and barge-in latency under 350ms without text-bottleneck loss. Cascaded stacks remain preferred when you need strict transcript auditing, custom pronunciation dictionaries, or lowest per-minute cost.',
   },
   {
     question: 'Does the telephony toggle include PSTN / SIP trunking?',

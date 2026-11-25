@@ -67,7 +67,7 @@ const jsonLd = [
             <input class="toggle-checkbox" id="homeBatchToggle" type="checkbox" />
           </div>
 
-          <a href={apiSimHref} class="btn-primary" style="margin-top:auto;">Open full 10-model simulator</a>
+          <a href={apiSimHref} class="btn-primary" style="margin-top:auto;">Open full 15-model simulator</a>
         </div>
 
         <div class="results-pane">
@@ -78,12 +78,12 @@ const jsonLd = [
               <p class="kpi-sub" id="homeKpiCheapestName">—</p>
             </div>
             <div class="kpi-cell">
-              <p class="kpi-label">GPT-4.1 monthly</p>
+              <p class="kpi-label">GPT-5.4 monthly</p>
               <p class="kpi-value" id="homeKpiGpt">$0</p>
               <p class="kpi-sub" id="homeKpiGptSub">3.2K sys + 1.2K in / 700 out</p>
             </div>
             <div class="kpi-cell">
-              <p class="kpi-label">Claude Sonnet 4.5</p>
+              <p class="kpi-label">Claude Sonnet 5.5</p>
               <p class="kpi-value" id="homeKpiClaude">$0</p>
               <p class="kpi-sub" id="homeKpiClaudeSave">Cache saves $0/mo</p>
             </div>
@@ -150,8 +150,8 @@ const jsonLd = [
 
   function render() {
     const res = calculateLlmApiCost(state);
-    const gpt = res.models.find((m) => m.id === 'gpt-4.1') ?? res.models[0];
-    const claude = res.models.find((m) => m.id === 'claude-sonnet-4.5') ?? res.flagshipModel;
+    const gpt = res.models.find((m) => m.id === 'gpt-5.4') ?? res.models[0];
+    const claude = res.models.find((m) => m.id === 'claude-sonnet-5.5') ?? res.flagshipModel;
 
     document.getElementById('homeKpiCheapest')!.textContent = formatUsd(res.cheapestModel.monthlyTotal);
     document.getElementById('homeKpiCheapestName')!.textContent = `${res.cheapestModel.name} (${res.cheapestModel.provider})`;
@@ -159,7 +159,7 @@ const jsonLd = [
     document.getElementById('homeKpiClaude')!.textContent = formatUsd(claude.monthlyTotal);
     document.getElementById('homeKpiClaudeSave')!.textContent = `Cache saves ${formatUsd(claude.cacheSavingsUsd)}/mo`;
 
-    const featuredIds = ['gemini-2.5-flash', 'deepseek-v3', 'gpt-4.1-mini', 'gpt-4.1', 'gemini-2.5-pro', 'claude-sonnet-4.5'];
+    const featuredIds = ['claude-haiku-5.5', 'deepseek-v4.1-flash', 'gpt-5.4-mini', 'gemini-4-carbon', 'claude-sonnet-5.5', 'gpt-5.4'];
     const featured = featuredIds
       .map((id) => res.models.find((m) => m.id === id))
       .filter((m): m is NonNullable<typeof m> => Boolean(m))
@@ -170,8 +170,8 @@ const jsonLd = [
         label: m.name,
         value: m.monthlyTotal,
         displayValue: formatCompactUsd(m.monthlyTotal),
-        color: idx === 0 ? CHART_COLORS[1] : m.id === 'gpt-4.1' ? CHART_COLORS[0] : '#475569',
-        highlight: idx === 0 || m.id === 'gpt-4.1',
+        color: idx === 0 ? CHART_COLORS[1] : m.id === 'gpt-5.4' ? CHART_COLORS[0] : '#475569',
+        highlight: idx === 0 || m.id === 'gpt-5.4',
       })),
       { title: 'Featured LLM Monthly Cost Comparison' }
     );

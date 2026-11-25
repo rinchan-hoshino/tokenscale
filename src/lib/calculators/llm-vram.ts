@@ -40,10 +40,10 @@ export interface LlmVramResult {
 
 export const LLM_VRAM_PRESETS: Record<string, LlmVramInput> = {
   mvp: {
-    modelId: 'llama-3.1-8b',
-    paramsB: 8.0,
-    activeParamsB: 8.0,
-    layers: 32,
+    modelId: 'qwen3-8b',
+    paramsB: 8.2,
+    activeParamsB: 8.2,
+    layers: 36,
     kvHeads: 8,
     headDim: 128,
     quantizationId: 'Q4_K_M',
@@ -52,7 +52,7 @@ export const LLM_VRAM_PRESETS: Record<string, LlmVramInput> = {
     kvPrecisionId: 'FP16',
   },
   scaleup: {
-    modelId: 'qwen-2.5-32b',
+    modelId: 'qwen3-32b',
     paramsB: 32.8,
     activeParamsB: 32.8,
     layers: 64,
@@ -64,10 +64,10 @@ export const LLM_VRAM_PRESETS: Record<string, LlmVramInput> = {
     kvPrecisionId: 'FP8',
   },
   enterprise: {
-    modelId: 'llama-3.3-70b',
-    paramsB: 70.6,
-    activeParamsB: 70.6,
-    layers: 80,
+    modelId: 'llama-4-scout-109b',
+    paramsB: 109.0,
+    activeParamsB: 17.0,
+    layers: 48,
     kvHeads: 8,
     headDim: 128,
     quantizationId: 'FP8',

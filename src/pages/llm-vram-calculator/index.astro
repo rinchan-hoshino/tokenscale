@@ -11,7 +11,7 @@ const faqs = [
   {
     question: 'How does MoE (Mixture-of-Experts) affect VRAM vs decode speed?',
     answer:
-      'MoE models like Mixtral 8x22B must hold all 141B parameters in VRAM, so memory capacity is governed by total parameters. However, token generation only reads the active 39B parameters per forward pass, yielding significantly higher decode tok/s on memory-bandwidth-bound GPUs.',
+      'MoE models like Llama 4 Scout 109B or DeepSeek V4.1 Flash 552B must hold all parameters in VRAM, so memory capacity is governed by total parameters. However, token generation only reads the active parameters (17B or 32B) per forward pass, yielding significantly higher decode tok/s on memory-bandwidth-bound GPUs.',
   },
   {
     question: 'Why is Apple Silicon usable VRAM lower than total unified memory?',
@@ -30,7 +30,7 @@ const faqs = [
   pageTitle="Local LLM GPU VRAM & KV-Cache Sizing Simulator | TokenScale"
   h1="Local LLM GPU VRAM, KV-Cache & Quantization Sizing"
   subtitle="Calculate exact model weights, GQA KV-cache growth, CUDA overhead, hardware fit, and memory-bandwidth tok/s across NVIDIA GPUs and Apple Silicon."
-  metaDescription="Interactive local LLM VRAM calculator for 7B to 141B Dense and MoE models with FP16, FP8, Q8_0, Q6_K, and Q4_K_M quantization, 2K to 128K context KV-cache, and GPU hardware sizing."
+  metaDescription="Interactive local LLM VRAM calculator for 8B to 552B Dense and MoE models (Qwen3, Llama 4, DeepSeek V4.1) with FP16, FP8, Q8_0, Q6_K, and Q4_K_M quantization, 2K to 128K context KV-cache, and H200/B200 GPU sizing."
   canonicalPath="/llm-vram-calculator/"
   faqs={faqs}
 >
@@ -53,9 +53,9 @@ const faqs = [
     <div class="control-field">
       <div class="control-row">
         <label class="control-label" for="paramsNum">Total parameters (B)</label>
-        <input class="num-input" id="paramsNum" type="number" min="1" max="405" step="0.5" value="32.8" />
+        <input class="num-input" id="paramsNum" type="number" min="1" max="600" step="0.5" value="32.8" />
       </div>
-      <input class="range-input" id="paramsRange" type="range" min="1" max="200" step="0.5" value="32.8" aria-label="Total parameters slider" />
+      <input class="range-input" id="paramsRange" type="range" min="1" max="600" step="0.5" value="32.8" aria-label="Total parameters slider" />
     </div>
 
     <div class="control-field">
@@ -221,7 +221,7 @@ const faqs = [
     quantSelect.value = state.quantizationId;
     kvPrecSelect.value = state.kvPrecisionId;
     paramsNum.value = String(state.paramsB);
-    paramsRange.value = String(Math.min(200, state.paramsB));
+    paramsRange.value = String(Math.min(600, state.paramsB));
     contextNum.value = String(state.contextLength);
     contextRange.value = String(state.contextLength);
     seqsNum.value = String(state.concurrentSeqs);

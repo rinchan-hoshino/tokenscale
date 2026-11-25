@@ -9,7 +9,7 @@ import { calculateVoiceAiCost, VOICE_AI_PRESETS } from '../src/lib/calculators/v
 describe('1. LLM API & Prompt Caching Simulator', () => {
   it('computes positive costs and sorts ascending', () => {
     const res = calculateLlmApiCost(LLM_API_PRESETS.scaleup);
-    expect(res.models.length).toBeGreaterThanOrEqual(8);
+    expect(res.models.length).toBe(15);
     expect(res.cheapestModel.monthlyTotal).toBeGreaterThan(0);
     for (let i = 1; i < res.models.length; i++) {
       expect(res.models[i].monthlyTotal).toBeGreaterThanOrEqual(res.models[i - 1].monthlyTotal);
@@ -19,8 +19,8 @@ describe('1. LLM API & Prompt Caching Simulator', () => {
   it('higher prompt cache hit rate monotonically reduces cost for caching models', () => {
     const lowCache = calculateLlmApiCost({ ...LLM_API_PRESETS.scaleup, cacheHitRate: 0 });
     const highCache = calculateLlmApiCost({ ...LLM_API_PRESETS.scaleup, cacheHitRate: 0.9 });
-    const sonnetLow = lowCache.models.find((m) => m.id === 'claude-sonnet-4.5')!;
-    const sonnetHigh = highCache.models.find((m) => m.id === 'claude-sonnet-4.5')!;
+    const sonnetLow = lowCache.models.find((m) => m.id === 'claude-sonnet-5.5')!;
+    const sonnetHigh = highCache.models.find((m) => m.id === 'claude-sonnet-5.5')!;
     expect(sonnetHigh.monthlyTotal).toBeLessThan(sonnetLow.monthlyTotal);
     expect(sonnetHigh.cacheSavingsUsd).toBeGreaterThan(0);
   });
@@ -28,8 +28,8 @@ describe('1. LLM API & Prompt Caching Simulator', () => {
   it('batch API halves cost for batch-supported models', () => {
     const regular = calculateLlmApiCost({ ...LLM_API_PRESETS.mvp, useBatchApi: false });
     const batch = calculateLlmApiCost({ ...LLM_API_PRESETS.mvp, useBatchApi: true });
-    const gptReg = regular.models.find((m) => m.id === 'gpt-4.1')!;
-    const gptBatch = batch.models.find((m) => m.id === 'gpt-4.1')!;
+    const gptReg = regular.models.find((m) => m.id === 'gpt-5.4')!;
+    const gptBatch = batch.models.find((m) => m.id === 'gpt-5.4')!;
     expect(gptBatch.monthlyTotal).toBeCloseTo(gptReg.monthlyTotal * 0.5, 4);
   });
 });
@@ -118,8 +118,8 @@ describe('6. Realtime Voice AI Pipeline Simulator', () => {
   it('higher VAD silence trimming monotonically reduces AI voice cost', () => {
     const noTrim = calculateVoiceAiCost({ ...VOICE_AI_PRESETS.scaleup, silenceTrimPct: 0 });
     const trim40 = calculateVoiceAiCost({ ...VOICE_AI_PRESETS.scaleup, silenceTrimPct: 40 });
-    const oaiNoTrim = noTrim.pipelines.find((p) => p.id === 'openai-realtime')!;
-    const oaiTrim = trim40.pipelines.find((p) => p.id === 'openai-realtime')!;
+    const oaiNoTrim = noTrim.pipelines.find((p) => p.id === 'gpt-realtime-2.1')!;
+    const oaiTrim = trim40.pipelines.find((p) => p.id === 'gpt-realtime-2.1')!;
     expect(oaiTrim.totalPerMin).toBeLessThan(oaiNoTrim.totalPerMin);
   });
 
