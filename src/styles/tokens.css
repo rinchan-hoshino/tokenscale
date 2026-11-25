@@ -1,0 +1,48 @@
+:root {
+  /* Precision Engineering Bench — Ceramic White Paper & Slate Ink */
+  --bg-canvas: #F8FAFC;
+  --bg-surface: #FFFFFF;
+  --bg-muted: #F1F5F9;
+
+  --border-subtle: #E2E8F0;
+  --border-strong: #CBD5E1;
+
+  --ink-primary: #0F172A;
+  --ink-secondary: #475569; /* >= 7.2:1 contrast on #F8FAFC & #FFFFFF */
+
+  --accent: #1D4ED8;
+  --accent-hover: #1E40AF;
+  --accent-soft: #EFF6FF;
+
+  /* Semantic state colors (all >= 5.0:1 on white) */
+  --status-ok: #0F766E;
+  --status-warn: #B45309;
+  --status-danger: #BE123C;
+
+  /* Accessible chart palette */
+  --chart-1: #1D4ED8;
+  --chart-2: #0D9488;
+  --chart-3: #D97706;
+  --chart-4: #7C3AED;
+  --chart-5: #E11D48;
+
+  /* Strict 2-family system typography (zero external font requests) */
+  --font-sans: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+  --font-mono: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+
+  /* Strict 3-tier scale below hero */
+  --text-h1: clamp(26px, 2.6vw, 32px);
+  --text-h2: 20px;
+  --text-body: 14.5px;
+  --text-sm: 12.5px;
+
+  /* Layout & radius */
+  --container-max: 1200px;
+  --header-h: 56px;
+  --radius-sm: 6px;
+  --radius-md: 8px;
+
+  /* Motion */
+  --ease-out: cubic-bezier(0.22, 1, 0.36, 1);
+  --dur-fast: 160ms;
+}

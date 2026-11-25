@@ -1,0 +1,374 @@
+---
+import SimulatorLayout from '../../layouts/SimulatorLayout.astro';
+import pricing from '../../data/pricing-2026.json';
+
+const faqs = [
+  {
+    question: 'Why does GPU utilization matter so much in break-even modeling?',
+    answer:
+      'Dedicated cloud GPUs bill 24/7 (730 hours/month) whether traffic arrives or not. Real SaaS workloads exhibit diurnal peaks and troughs, typically averaging 30%–55% utilization unless backed by autoscaling queues or global multi-timezone traffic.',
+  },
+  {
+    question: 'Why does the self-hosted GPU cost line step upward like a staircase?',
+    answer:
+      'GPU capacity scales in discrete hardware units. Once daily token demand exceeds the effective daily throughput of one GPU at your target utilization, you must provision a second GPU, creating a step-function cost jump.',
+  },
+  {
+    question: 'What hidden costs should we add to self-hosted GPU infrastructure?',
+    answer:
+      'Beyond raw hourly GPU rental, production teams should budget for cross-AZ networking, observability, vLLM/SGLang image maintenance, and at least N+1 redundancy if zero-downtime SLA is required.',
+  },
+  {
+    question: 'When does a managed API stay cheaper even at high token volume?',
+    answer:
+      'When using ultra-low-cost managed models (such as Gemini 2.5 Flash or GPT-4.1 mini) with heavy prompt caching, or when traffic is spiky with sub-20% average utilization, managed APIs frequently undercut dedicated GPU clusters.',
+  },
+];
+---
+<SimulatorLayout
+  simId="gpu-breakeven"
+  pageTitle="Self-Hosted GPU vs Managed LLM API Break-Even Simulator | TokenScale"
+  h1="Self-Hosted GPU vs Managed LLM API Break-Even"
+  subtitle="Plot the exact daily token volume crossover where renting dedicated H100, A100, L40S, or RTX 4090 instances beats pay-per-token managed APIs."
+  metaDescription="Interactive GPU vs LLM API break-even simulator. Model daily token volume, GPU utilization, hourly H100/L40S/RTX 4090 rates, and blended API pricing to find the exact crossover point."
+  canonicalPath="/gpu-vs-api-breakeven/"
+  faqs={faqs}
+>
+  <Fragment slot="controls">
+    <div class="preset-group" role="group" aria-label="Traffic presets">
+      <button type="button" class="preset-btn" data-preset="mvp" aria-pressed="false">Startup MVP</button>
+      <button type="button" class="preset-btn" data-preset="scaleup" aria-pressed="true">Scale-up SaaS</button>
+      <button type="button" class="preset-btn" data-preset="enterprise" aria-pressed="false">Enterprise Batch</button>
+    </div>
+
+    <div class="control-field">
+      <div class="control-row">
+        <label class="control-label" for="dailyTokensNum">Daily volume (M tokens)</label>
+        <input class="num-input" id="dailyTokensNum" type="number" min="1" max="500" step="1" value="65" />
+      </div>
+      <input class="range-input" id="dailyTokensRange" type="range" min="1" max="500" step="1" value="65" aria-label="Daily token volume slider" />
+    </div>
+
+    <div class="control-field">
+      <div class="control-row">
+        <label class="control-label" for="inputShareNum">Input token share (%)</label>
+        <input class="num-input" id="inputShareNum" type="number" min="20" max="95" step="5" value="70" />
+      </div>
+      <input class="range-input" id="inputShareRange" type="range" min="20" max="95" step="5" value="70" aria-label="Input token share slider" />
+    </div>
+
+    <div class="control-field">
+      <div class="control-row">
+        <label class="control-label" for="utilNum">Avg GPU utilization (%)</label>
+        <input class="num-input" id="utilNum" type="number" min="10" max="90" step="5" value="55" />
+      </div>
+      <input class="range-input" id="utilRange" type="range" min="10" max="90" step="5" value="55" aria-label="GPU utilization slider" />
+      <span class="control-hint">Accounts for diurnal peaks and idle headroom</span>
+    </div>
+
+    <hr class="controls-divider" />
+
+    <div class="control-field">
+      <label class="control-label" for="gpuProfileSelect">Cloud GPU instance</label>
+      <select class="select-input" id="gpuProfileSelect">
+        {pricing.gpuBreakevenProfiles.map((g) => (
+          <option value={g.id}>{g.name} (${g.hourlyUsd}/hr)</option>
+        ))}
+      </select>
+    </div>
+
+    <div class="control-field">
+      <div class="control-row">
+        <label class="control-label" for="gpuHourlyNum">GPU hourly rate ($/hr)</label>
+        <input class="num-input" id="gpuHourlyNum" type="number" min="0.2" max="15" step="0.05" value="2.69" />
+      </div>
+      <input class="range-input" id="gpuHourlyRange" type="range" min="0.2" max="10" step="0.05" value="2.69" aria-label="GPU hourly rate slider" />
+    </div>
+
+    <div class="control-field">
+      <div class="control-row">
+        <label class="control-label" for="apiInNum">API input / output ($/1M)</label>
+        <div style="display:flex;gap:6px;">
+          <input class="num-input" style="width:68px;" id="apiInNum" type="number" min="0.05" max="30" step="0.05" value="2.00" aria-label="API input price per 1M tokens" />
+          <input class="num-input" style="width:68px;" id="apiOutNum" type="number" min="0.1" max="80" step="0.1" value="8.00" aria-label="API output price per 1M tokens" />
+        </div>
+      </div>
+      <span class="control-hint">Left: input $/1M &middot; Right: output $/1M</span>
+    </div>
+  </Fragment>
+
+  <Fragment slot="results">
+    <div class="kpi-strip">
+      <div class="kpi-cell">
+        <p class="kpi-label">Break-even crossover</p>
+        <p class="kpi-value accent" id="kpiCrossover">—</p>
+        <p class="kpi-sub" id="kpiWinner">Recommended: —</p>
+      </div>
+      <div class="kpi-cell">
+        <p class="kpi-label">Self-hosted GPU / mo</p>
+        <p class="kpi-value" id="kpiGpuCost">$0</p>
+        <p class="kpi-sub" id="kpiGpuCount">1 GPU provisioned</p>
+      </div>
+      <div class="kpi-cell">
+        <p class="kpi-label">Managed API / mo</p>
+        <p class="kpi-value" id="kpiApiCost">$0</p>
+        <p class="kpi-sub" id="kpiDelta">Monthly delta</p>
+      </div>
+    </div>
+
+    <div class="results-actions">
+      <span class="control-hint" id="capacityNote">1 GPU sustains 0M tokens/day at current utilization.</span>
+      <div class="action-buttons">
+        <button type="button" class="btn-secondary" id="copyUrlBtn">Copy scenario URL</button>
+        <button type="button" class="btn-primary" id="exportCsvBtn">Export CSV</button>
+      </div>
+    </div>
+
+    <div class="chart-block">
+      <h2 class="block-heading">Monthly cost crossover curve (Managed API vs Self-Hosted GPU)</h2>
+      <div class="chart-stage" id="crossoverChartStage"></div>
+    </div>
+
+    <div class="table-wrap">
+      <table class="data-table">
+        <thead>
+          <tr>
+            <th>Daily volume</th>
+            <th class="num">GPUs needed</th>
+            <th class="num">Self-hosted GPU / mo</th>
+            <th class="num">Managed API / mo</th>
+            <th class="num">Cheaper option</th>
+          </tr>
+        </thead>
+        <tbody id="curveTableBody"></tbody>
+      </table>
+    </div>
+  </Fragment>
+
+  <Fragment slot="formulas">
+    <div class="formula-grid">
+      <div>
+        <h3>Blended API &amp; GPU step-cost formulas</h3>
+        <div class="formula-box">
+          P_blended = s_in * P_in + (1 - s_in) * P_out<br />
+          API_mo = V_daily_M * 30 * P_blended<br />
+          Cap_gpu_daily_M = (TokPerSec_peak * 86400 * u) / 10^6<br />
+          GPU_mo = ceil(V_daily_M / Cap_gpu_daily_M) * HourlyRate * 730
+        </div>
+        <p>
+          Monthly GPU spend assumes continuous 730-hour provisioning per required node, while effective daily capacity scales linearly with average utilization <code>u</code>.
+        </p>
+      </div>
+      <div>
+        <h3>Exact break-even inflection point</h3>
+        <div class="formula-box">
+          V_breakeven_M = (HourlyRate * 730) / (30 * P_blended)
+        </div>
+        <p>
+          The crossover occurs where monthly Managed API spend equals the monthly cost of the first dedicated GPU—provided the GPU's fully utilized per-million-token cost is lower than <code>P_blended</code>.
+        </p>
+      </div>
+    </div>
+  </Fragment>
+</SimulatorLayout>
+
+<script>
+  import pricing from '../../data/pricing-2026.json';
+  import { calculateGpuBreakeven, GPU_BREAKEVEN_PRESETS, type GpuBreakevenInput } from '../../lib/calculators/gpu-vs-api';
+  import { formatUsd, downloadCsv } from '../../lib/format';
+  import { readStateFromUrl, writeStateToUrl, copyCurrentUrl, type ParamSpec } from '../../lib/url-state';
+  import { renderLineChart, CHART_COLORS } from '../../lib/svg-charts';
+
+  const SPEC: ParamSpec = {
+    dailyTokensM: 'number',
+    inputSharePct: 'number',
+    gpuUtilizationPct: 'number',
+    gpuProfileId: 'string',
+    gpuHourlyUsd: 'number',
+    gpuPeakTokPerSec: 'number',
+    apiInputPer1M: 'number',
+    apiOutputPer1M: 'number',
+  };
+
+  let state: GpuBreakevenInput = readStateFromUrl({ ...GPU_BREAKEVEN_PRESETS.scaleup }, SPEC);
+
+  const dailyNum = document.getElementById('dailyTokensNum') as HTMLInputElement;
+  const dailyRange = document.getElementById('dailyTokensRange') as HTMLInputElement;
+  const inputShareNum = document.getElementById('inputShareNum') as HTMLInputElement;
+  const inputShareRange = document.getElementById('inputShareRange') as HTMLInputElement;
+  const utilNum = document.getElementById('utilNum') as HTMLInputElement;
+  const utilRange = document.getElementById('utilRange') as HTMLInputElement;
+  const gpuProfileSelect = document.getElementById('gpuProfileSelect') as HTMLSelectElement;
+  const gpuHourlyNum = document.getElementById('gpuHourlyNum') as HTMLInputElement;
+  const gpuHourlyRange = document.getElementById('gpuHourlyRange') as HTMLInputElement;
+  const apiInNum = document.getElementById('apiInNum') as HTMLInputElement;
+  const apiOutNum = document.getElementById('apiOutNum') as HTMLInputElement;
+  const presetBtns = Array.from(document.querySelectorAll<HTMLButtonElement>('.preset-btn'));
+
+  function syncInputsFromState() {
+    dailyNum.value = String(state.dailyTokensM);
+    dailyRange.value = String(Math.min(500, state.dailyTokensM));
+    inputShareNum.value = String(state.inputSharePct);
+    inputShareRange.value = String(state.inputSharePct);
+    utilNum.value = String(state.gpuUtilizationPct);
+    utilRange.value = String(state.gpuUtilizationPct);
+    gpuProfileSelect.value = state.gpuProfileId;
+    gpuHourlyNum.value = String(state.gpuHourlyUsd);
+    gpuHourlyRange.value = String(Math.min(10, state.gpuHourlyUsd));
+    apiInNum.value = String(state.apiInputPer1M);
+    apiOutNum.value = String(state.apiOutputPer1M);
+  }
+
+  let lastResult = calculateGpuBreakeven(state);
+
+  function render() {
+    lastResult = calculateGpuBreakeven(state);
+    writeStateToUrl(state, SPEC);
+
+    document.getElementById('kpiCrossover')!.textContent =
+      lastResult.breakevenDailyTokensM !== null
+        ? `${lastResult.breakevenDailyTokensM.toFixed(1)}M tok/day`
+        : 'API always cheaper';
+    document.getElementById('kpiWinner')!.textContent = `At ${state.dailyTokensM}M/day: ${lastResult.winner}`;
+
+    document.getElementById('kpiGpuCost')!.textContent = formatUsd(lastResult.monthlyGpuUsd);
+    document.getElementById('kpiGpuCount')!.textContent =
+      `${lastResult.gpusRequired}x GPU provisioned ($${state.gpuHourlyUsd.toFixed(2)}/hr)`;
+
+    document.getElementById('kpiApiCost')!.textContent = formatUsd(lastResult.monthlyApiUsd);
+    const diff = Math.abs(lastResult.monthlySavingsUsd);
+    document.getElementById('kpiDelta')!.textContent =
+      lastResult.monthlySavingsUsd >= 0
+        ? `GPU saves ${formatUsd(diff)}/mo`
+        : `API saves ${formatUsd(diff)}/mo`;
+
+    document.getElementById('capacityNote')!.textContent =
+      `1 GPU sustains ${lastResult.singleGpuCapacityDailyM.toFixed(1)}M tokens/day at ${state.gpuUtilizationPct}% utilization (blended API: $${lastResult.blendedApiPer1M.toFixed(2)}/1M).`;
+
+    const maxVol = lastResult.curve[lastResult.curve.length - 1].dailyTokensM;
+    const marker =
+      lastResult.breakevenDailyTokensM !== null && lastResult.breakevenDailyTokensM <= maxVol
+        ? {
+            xRatio: lastResult.breakevenDailyTokensM / maxVol,
+            yValue: lastResult.breakevenDailyTokensM * 30 * lastResult.blendedApiPer1M,
+            label: `Break-even: ${lastResult.breakevenDailyTokensM.toFixed(1)}M/day`,
+          }
+        : null;
+
+    document.getElementById('crossoverChartStage')!.innerHTML = renderLineChart({
+      title: 'Self-Hosted GPU vs Managed API Break-Even Curve',
+      xLabels: lastResult.curve.map((pt) => `${Math.round(pt.dailyTokensM)}M`),
+      xAxisTitle: 'Daily token volume (millions of tokens/day)',
+      series: [
+        {
+          name: 'Managed API',
+          color: CHART_COLORS[0],
+          values: lastResult.curve.map((pt) => pt.apiMonthlyUsd),
+        },
+        {
+          name: 'Self-Hosted GPU',
+          color: CHART_COLORS[1],
+          values: lastResult.curve.map((pt) => pt.gpuMonthlyUsd),
+        },
+      ],
+      marker,
+    });
+
+    const sampleIndices = [2, 6, 10, 14, 18, 24].filter((i) => i < lastResult.curve.length);
+    document.getElementById('curveTableBody')!.innerHTML = sampleIndices
+      .map((i) => {
+        const pt = lastResult.curve[i];
+        const gpuWins = pt.gpuMonthlyUsd < pt.apiMonthlyUsd;
+        return `<tr>
+          <td><strong>${pt.dailyTokensM.toFixed(1)}M / day</strong></td>
+          <td class="num">${pt.gpusNeeded}x</td>
+          <td class="num">${formatUsd(pt.gpuMonthlyUsd)}</td>
+          <td class="num">${formatUsd(pt.apiMonthlyUsd)}</td>
+          <td class="num ${gpuWins ? 'status-ok' : ''}">${gpuWins ? 'Self-Hosted GPU' : 'Managed API'}</td>
+        </tr>`;
+      })
+      .join('');
+  }
+
+  const bindPair = (
+    numEl: HTMLInputElement,
+    rangeEl: HTMLInputElement,
+    setter: (v: number) => void
+  ) => {
+    const fn = (val: string) => {
+      const n = Number(val);
+      if (!Number.isFinite(n)) return;
+      setter(n);
+      numEl.value = val;
+      rangeEl.value = val;
+      presetBtns.forEach((b) => b.setAttribute('aria-pressed', 'false'));
+      render();
+    };
+    numEl.addEventListener('input', () => fn(numEl.value));
+    rangeEl.addEventListener('input', () => fn(rangeEl.value));
+  };
+
+  bindPair(dailyNum, dailyRange, (v) => (state.dailyTokensM = v));
+  bindPair(inputShareNum, inputShareRange, (v) => (state.inputSharePct = v));
+  bindPair(utilNum, utilRange, (v) => (state.gpuUtilizationPct = v));
+  bindPair(gpuHourlyNum, gpuHourlyRange, (v) => (state.gpuHourlyUsd = v));
+
+  gpuProfileSelect.addEventListener('change', () => {
+    const p = pricing.gpuBreakevenProfiles.find((g) => g.id === gpuProfileSelect.value);
+    if (p) {
+      state.gpuProfileId = p.id;
+      state.gpuHourlyUsd = p.hourlyUsd;
+      state.gpuPeakTokPerSec = p.peakTokPerSec;
+      syncInputsFromState();
+      render();
+    }
+  });
+
+  apiInNum.addEventListener('input', () => {
+    const v = Number(apiInNum.value);
+    if (Number.isFinite(v)) {
+      state.apiInputPer1M = v;
+      render();
+    }
+  });
+  apiOutNum.addEventListener('input', () => {
+    const v = Number(apiOutNum.value);
+    if (Number.isFinite(v)) {
+      state.apiOutputPer1M = v;
+      render();
+    }
+  });
+
+  presetBtns.forEach((btn) => {
+    btn.addEventListener('click', () => {
+      const key = btn.dataset.preset!;
+      if (GPU_BREAKEVEN_PRESETS[key]) {
+        state = { ...GPU_BREAKEVEN_PRESETS[key] };
+        presetBtns.forEach((b) => b.setAttribute('aria-pressed', b === btn ? 'true' : 'false'));
+        syncInputsFromState();
+        render();
+      }
+    });
+  });
+
+  document.getElementById('copyUrlBtn')!.addEventListener('click', (e) => {
+    copyCurrentUrl(e.currentTarget as HTMLButtonElement);
+  });
+
+  document.getElementById('exportCsvBtn')!.addEventListener('click', () => {
+    downloadCsv(
+      'tokenscale-gpu-vs-api-breakeven.csv',
+      ['Daily Tokens (M)', 'GPUs Needed', 'Self-Hosted GPU Monthly USD', 'Managed API Monthly USD', 'Winner'],
+      lastResult.curve.map((pt) => [
+        pt.dailyTokensM.toFixed(1),
+        pt.gpusNeeded,
+        pt.gpuMonthlyUsd.toFixed(2),
+        pt.apiMonthlyUsd.toFixed(2),
+        pt.gpuMonthlyUsd < pt.apiMonthlyUsd ? 'Self-Hosted GPU' : 'Managed API',
+      ])
+    );
+  });
+
+  syncInputsFromState();
+  render();
+</script>

@@ -1,0 +1,116 @@
+---
+import BaseLayout from './BaseLayout.astro';
+import { SIMULATORS } from '../data/simulators';
+
+export interface FaqItem {
+  question: string;
+  answer: string;
+}
+
+interface Props {
+  simId: string;
+  pageTitle: string;
+  h1: string;
+  subtitle: string;
+  metaDescription: string;
+  canonicalPath: string;
+  faqs: FaqItem[];
+}
+
+const { simId, pageTitle, h1, subtitle, metaDescription, canonicalPath, faqs } = Astro.props;
+const related = SIMULATORS.filter((s) => s.id !== simId).slice(0, 3);
+
+const siteOrigin = 'https://tokenscale.dev';
+const jsonLd = [
+  {
+    '@context': 'https://schema.org',
+    '@type': 'SoftwareApplication',
+    name: h1,
+    applicationCategory: 'DeveloperApplication',
+    operatingSystem: 'Any',
+    url: `${siteOrigin}${canonicalPath}`,
+    description: metaDescription,
+    offers: {
+      '@type': 'Offer',
+      price: '0',
+      priceCurrency: 'USD',
+    },
+  },
+  {
+    '@context': 'https://schema.org',
+    '@type': 'FAQPage',
+    mainEntity: faqs.map((f) => ({
+      '@type': 'Question',
+      name: f.question,
+      acceptedAnswer: {
+        '@type': 'Answer',
+        text: f.answer,
+      },
+    })),
+  },
+];
+---
+<BaseLayout
+  title={pageTitle}
+  description={metaDescription}
+  canonicalPath={canonicalPath}
+  jsonLd={jsonLd}
+>
+  <section class="page-head">
+    <div class="container">
+      <h1>{h1}</h1>
+      <p class="page-subtitle">{subtitle}</p>
+    </div>
+  </section>
+
+  <section class="workbench-section">
+    <div class="container">
+      <div class="workbench-grid">
+        <div class="controls-pane">
+          <slot name="controls" />
+        </div>
+        <div class="results-pane">
+          <slot name="results" />
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section class="doc-section">
+    <div class="container">
+      <h2>Mathematical model and engineering assumptions</h2>
+      <slot name="formulas" />
+    </div>
+  </section>
+
+  <section class="doc-section">
+    <div class="container">
+      <h2>Engineering FAQ</h2>
+      <div class="faq-grid">
+        {faqs.map((faq) => (
+          <div class="faq-item">
+            <h3>{faq.question}</h3>
+            <p>{faq.answer}</p>
+          </div>
+        ))}
+      </div>
+    </div>
+  </section>
+
+  <section class="doc-section">
+    <div class="container">
+      <h2>Related infrastructure simulators</h2>
+      <div class="matrix-grid">
+        {related.map((sim) => (
+          <a href={sim.href} class="matrix-cell">
+            <div>
+              <h3>{sim.title}</h3>
+              <p>{sim.shortDesc}</p>
+            </div>
+            <span class="matrix-link-text">{sim.ctaLabel} &rarr;</span>
+          </a>
+        ))}
+      </div>
+    </div>
+  </section>
+</BaseLayout>

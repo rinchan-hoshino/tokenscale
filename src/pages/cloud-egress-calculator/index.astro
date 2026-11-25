@@ -1,0 +1,270 @@
+---
+import SimulatorLayout from '../../layouts/SimulatorLayout.astro';
+
+const faqs = [
+  {
+    question: 'Why does Cloudflare R2 stay flat on the egress cliff chart?',
+    answer:
+      'Cloudflare R2 charges $0.00 per GB of egress bandwidth regardless of monthly outbound volume. As a result, its monthly bill is determined solely by stored terabytes and Class A/B API operations, eliminating hyperscaler egress spikes.',
+  },
+  {
+    question: 'How does Backblaze B2 3x free egress work?',
+    answer:
+      'Backblaze B2 includes free monthly egress up to 3x your average stored capacity (for example, 40 TB stored includes 120 TB of free monthly download). Egress beyond that threshold is billed at $0.01/GB—still roughly 8x to 12x cheaper than AWS S3 or GCS.',
+  },
+  {
+    question: 'Does putting CloudFront in front of AWS S3 eliminate egress fees?',
+    answer:
+      'No. While S3-to-CloudFront origin transfer is free, CloudFront still bills internet data transfer out at roughly $0.085/GB in US/EU regions (after the 1 TB free tier). For media, model weights, or dataset distribution, egress dominates 80%+ of the bill.',
+  },
+  {
+    question: 'When do Class A and Class B operation fees overtake storage costs?',
+    answer:
+      'Workloads with millions of tiny objects (such as tile maps, small JSON logs, or high-churn feature stores) generate heavy Class A PUT/LIST charges ($4.50–$5.00 per million requests). Batching small objects into Parquet or tar archives cuts operation bills dramatically.',
+  },
+];
+---
+<SimulatorLayout
+  simId="cloud-egress"
+  pageTitle="Cloud Object Storage & Egress Cost Comparator | TokenScale"
+  h1="Cloud Object Storage & Egress Cost Comparator"
+  subtitle="Compare monthly storage, outbound egress, and Class A/B operation costs across Cloudflare R2, Backblaze B2, AWS S3 + CloudFront, and Google Cloud Storage."
+  metaDescription="Interactive cloud object storage and egress cost calculator comparing Cloudflare R2, Backblaze B2, AWS S3 + CloudFront, and Google Cloud Storage with multi-line egress cliff charts."
+  canonicalPath="/cloud-egress-calculator/"
+  faqs={faqs}
+>
+  <Fragment slot="controls">
+    <div class="preset-group" role="group" aria-label="Storage presets">
+      <button type="button" class="preset-btn" data-preset="mvp" aria-pressed="false">Startup MVP</button>
+      <button type="button" class="preset-btn" data-preset="scaleup" aria-pressed="true">Scale-up SaaS</button>
+      <button type="button" class="preset-btn" data-preset="enterprise" aria-pressed="false">Enterprise Batch</button>
+    </div>
+
+    <div class="control-field">
+      <div class="control-row">
+        <label class="control-label" for="storageNum">Stored data (TB)</label>
+        <input class="num-input" id="storageNum" type="number" min="0.5" max="500" step="0.5" value="40" />
+      </div>
+      <input class="range-input" id="storageRange" type="range" min="1" max="500" step="1" value="40" aria-label="Stored data TB slider" />
+    </div>
+
+    <div class="control-field">
+      <div class="control-row">
+        <label class="control-label" for="egressNum">Monthly egress traffic (TB)</label>
+        <input class="num-input" id="egressNum" type="number" min="0" max="500" step="1" value="120" />
+      </div>
+      <input class="range-input" id="egressRange" type="range" min="0" max="500" step="1" value="120" aria-label="Monthly egress TB slider" />
+      <span class="control-hint">Outbound bandwidth served to users or external clouds</span>
+    </div>
+
+    <div class="control-field">
+      <div class="control-row">
+        <label class="control-label" for="classANum">Class A writes / list (M/mo)</label>
+        <input class="num-input" id="classANum" type="number" min="0" max="100" step="0.5" value="8" />
+      </div>
+      <input class="range-input" id="classARange" type="range" min="0" max="100" step="1" value="8" aria-label="Class A requests slider" />
+    </div>
+
+    <div class="control-field">
+      <div class="control-row">
+        <label class="control-label" for="classBNum">Class B reads / gets (M/mo)</label>
+        <input class="num-input" id="classBNum" type="number" min="0" max="500" step="1" value="90" />
+      </div>
+      <input class="range-input" id="classBRange" type="range" min="0" max="500" step="5" value="90" aria-label="Class B requests slider" />
+    </div>
+  </Fragment>
+
+  <Fragment slot="results">
+    <div class="kpi-strip">
+      <div class="kpi-cell">
+        <p class="kpi-label">Lowest monthly total</p>
+        <p class="kpi-value accent" id="kpiCheapest">$0</p>
+        <p class="kpi-sub" id="kpiCheapestName">—</p>
+      </div>
+      <div class="kpi-cell">
+        <p class="kpi-label">Highest hyperscaler bill</p>
+        <p class="kpi-value" id="kpiExpensive">$0</p>
+        <p class="kpi-sub" id="kpiExpensiveName">—</p>
+      </div>
+      <div class="kpi-cell">
+        <p class="kpi-label">Monthly egress savings</p>
+        <p class="kpi-value" id="kpiSavings">$0</p>
+        <p class="kpi-sub" id="kpiSavingsAnnual">$0 / year saved</p>
+      </div>
+    </div>
+
+    <div class="results-actions">
+      <span class="control-hint">Decimal TB (1 TB = 1,000 GB) matching cloud provider billing units.</span>
+      <div class="action-buttons">
+        <button type="button" class="btn-secondary" id="copyUrlBtn">Copy scenario URL</button>
+        <button type="button" class="btn-primary" id="exportCsvBtn">Export CSV</button>
+      </div>
+    </div>
+
+    <div class="chart-block">
+      <h2 class="block-heading">Egress cost cliff across outbound traffic (0 to 2x current egress)</h2>
+      <div class="chart-stage" id="cliffChartStage"></div>
+    </div>
+
+    <div class="table-wrap">
+      <table class="data-table">
+        <thead>
+          <tr>
+            <th>Provider</th>
+            <th class="num">Storage</th>
+            <th class="num">Egress</th>
+            <th class="num">API ops</th>
+            <th class="num">Monthly total</th>
+          </tr>
+        </thead>
+        <tbody id="providerTableBody"></tbody>
+      </table>
+    </div>
+  </Fragment>
+
+  <Fragment slot="formulas">
+    <div class="formula-grid">
+      <div>
+        <h3>Provider monthly billing equation</h3>
+        <div class="formula-box">
+          BillableEgress_GB = max(0, Egress_TB * 1000 - FreeMult * Storage_TB * 1000)<br />
+          Total = (Storage_TB * 1000 * P_stor) + (BillableEgress_GB * P_egress)<br />
+          &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;+ (ClassA_M * P_A) + (ClassB_M * P_B)
+        </div>
+        <p>
+          Cloudflare R2 sets <code>P_egress = 0</code>. Backblaze B2 applies <code>FreeMult = 3</code> (free egress up to 3x stored capacity) and bills overage at <code>$0.01/GB</code>.
+        </p>
+      </div>
+      <div>
+        <h3>Hyperscaler egress dominance ratio</h3>
+        <div class="formula-box">
+          AWS S3 + CloudFront: $0.085/GB out ($85/TB)<br />
+          Google Cloud Storage: $0.120/GB out ($120/TB)
+        </div>
+        <p>
+          Once monthly egress exceeds 1x stored capacity, egress bandwidth accounts for 78%–95% of total AWS S3 and GCS object storage invoices.
+        </p>
+      </div>
+    </div>
+  </Fragment>
+</SimulatorLayout>
+
+<script>
+  import { calculateCloudEgress, CLOUD_EGRESS_PRESETS, type CloudEgressInput } from '../../lib/calculators/cloud-egress';
+  import { formatUsd, downloadCsv } from '../../lib/format';
+  import { readStateFromUrl, writeStateToUrl, copyCurrentUrl, type ParamSpec } from '../../lib/url-state';
+  import { renderLineChart, CHART_COLORS } from '../../lib/svg-charts';
+
+  const SPEC: ParamSpec = {
+    storageTB: 'number',
+    egressTB: 'number',
+    classAMillions: 'number',
+    classBMillions: 'number',
+  };
+
+  let state: CloudEgressInput = readStateFromUrl({ ...CLOUD_EGRESS_PRESETS.scaleup }, SPEC);
+
+  const pairs: { key: keyof CloudEgressInput; numId: string; rangeId: string }[] = [
+    { key: 'storageTB', numId: 'storageNum', rangeId: 'storageRange' },
+    { key: 'egressTB', numId: 'egressNum', rangeId: 'egressRange' },
+    { key: 'classAMillions', numId: 'classANum', rangeId: 'classARange' },
+    { key: 'classBMillions', numId: 'classBNum', rangeId: 'classBRange' },
+  ];
+  const presetBtns = Array.from(document.querySelectorAll<HTMLButtonElement>('.preset-btn'));
+
+  function syncInputsFromState() {
+    for (const p of pairs) {
+      (document.getElementById(p.numId) as HTMLInputElement).value = String(state[p.key]);
+      (document.getElementById(p.rangeId) as HTMLInputElement).value = String(state[p.key]);
+    }
+  }
+
+  let lastResult = calculateCloudEgress(state);
+
+  function render() {
+    lastResult = calculateCloudEgress(state);
+    writeStateToUrl(state, SPEC);
+
+    document.getElementById('kpiCheapest')!.textContent = formatUsd(lastResult.cheapest.totalUsd);
+    document.getElementById('kpiCheapestName')!.textContent = lastResult.cheapest.name;
+
+    document.getElementById('kpiExpensive')!.textContent = formatUsd(lastResult.mostExpensive.totalUsd);
+    document.getElementById('kpiExpensiveName')!.textContent = lastResult.mostExpensive.name;
+
+    document.getElementById('kpiSavings')!.textContent = formatUsd(lastResult.maxMonthlySavingsUsd);
+    document.getElementById('kpiSavingsAnnual')!.textContent =
+      `${formatUsd(lastResult.maxMonthlySavingsUsd * 12)} / year vs ${lastResult.mostExpensive.name}`;
+
+    document.getElementById('cliffChartStage')!.innerHTML = renderLineChart({
+      title: 'Cloud Storage Monthly Cost vs Egress Traffic',
+      xLabels: lastResult.cliffSeries.egressAxisTB.map((tb) => `${tb} TB`),
+      xAxisTitle: 'Monthly outbound egress traffic (TB)',
+      series: lastResult.cliffSeries.series.map((s, idx) => ({
+        name: s.name,
+        color: CHART_COLORS[idx % CHART_COLORS.length],
+        values: s.costs,
+      })),
+    });
+
+    document.getElementById('providerTableBody')!.innerHTML = lastResult.providers
+      .map(
+        (p, idx) => `<tr class="${idx === 0 ? 'row-highlight' : ''}">
+          <td><strong>${p.name}</strong></td>
+          <td class="num">${formatUsd(p.storageUsd)}</td>
+          <td class="num ${p.egressUsd === 0 ? 'status-ok' : ''}">${formatUsd(p.egressUsd)}</td>
+          <td class="num">${formatUsd(p.opsUsd)}</td>
+          <td class="num"><strong>${formatUsd(p.totalUsd)}</strong></td>
+        </tr>`
+      )
+      .join('');
+  }
+
+  for (const p of pairs) {
+    const numEl = document.getElementById(p.numId) as HTMLInputElement;
+    const rangeEl = document.getElementById(p.rangeId) as HTMLInputElement;
+    const onInput = (v: string) => {
+      const n = Number(v);
+      if (!Number.isFinite(n)) return;
+      state[p.key] = n;
+      numEl.value = v;
+      rangeEl.value = v;
+      presetBtns.forEach((b) => b.setAttribute('aria-pressed', 'false'));
+      render();
+    };
+    numEl.addEventListener('input', () => onInput(numEl.value));
+    rangeEl.addEventListener('input', () => onInput(rangeEl.value));
+  }
+
+  presetBtns.forEach((btn) => {
+    btn.addEventListener('click', () => {
+      const key = btn.dataset.preset!;
+      if (CLOUD_EGRESS_PRESETS[key]) {
+        state = { ...CLOUD_EGRESS_PRESETS[key] };
+        presetBtns.forEach((b) => b.setAttribute('aria-pressed', b === btn ? 'true' : 'false'));
+        syncInputsFromState();
+        render();
+      }
+    });
+  });
+
+  document.getElementById('copyUrlBtn')!.addEventListener('click', (e) => {
+    copyCurrentUrl(e.currentTarget as HTMLButtonElement);
+  });
+
+  document.getElementById('exportCsvBtn')!.addEventListener('click', () => {
+    downloadCsv(
+      'tokenscale-cloud-egress.csv',
+      ['Provider', 'Storage USD', 'Egress USD', 'API Operations USD', 'Monthly Total USD'],
+      lastResult.providers.map((p) => [
+        p.name,
+        p.storageUsd.toFixed(2),
+        p.egressUsd.toFixed(2),
+        p.opsUsd.toFixed(2),
+        p.totalUsd.toFixed(2),
+      ])
+    );
+  });
+
+  syncInputsFromState();
+  render();
+</script>

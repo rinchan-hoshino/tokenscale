@@ -1,0 +1,336 @@
+---
+import SimulatorLayout from '../../layouts/SimulatorLayout.astro';
+import pricing from '../../data/pricing-2026.json';
+
+const faqs = [
+  {
+    question: 'How does prompt caching reduce LLM API spend?',
+    answer:
+      'When requests share a static prefix such as a system prompt, tool definitions, or few-shot examples, providers bill cached prefix reads at 10% to 50% of standard input rates. Anthropic offers up to 90% discount on cache reads, while OpenAI and Gemini discount cached input by 50% to 75%.',
+  },
+  {
+    question: 'Why does the reasoning token multiplier only apply to certain models?',
+    answer:
+      'Reasoning models like o3-mini, DeepSeek-R1, Claude 3.7 Sonnet (extended thinking), and Gemini 2.5 Pro emit hidden chain-of-thought tokens billed at output token rates. Non-reasoning models emit only visible completion tokens, so the multiplier selectively models hidden thinking overhead.',
+  },
+  {
+    question: 'When should teams use the Batch API 50% discount?',
+    answer:
+      'Batch APIs trade synchronous latency for a 24-hour asynchronous SLA at half the standard token price. They are ideal for nightly evals, document extraction, embeddings backfill, and offline classification pipelines where users are not waiting interactively.',
+  },
+  {
+    question: 'How often are the model token rates updated?',
+    answer: `All rates are read from a single centralized pricing table (v${pricing.metadata.version}, last updated ${pricing.metadata.lastUpdated}) reflecting published US list pricing across OpenAI, Anthropic, Google, DeepSeek, and Groq.`,
+  },
+];
+---
+<SimulatorLayout
+  simId="llm-api"
+  pageTitle="LLM API & Prompt Caching Cost Simulator | TokenScale"
+  h1="LLM API & Prompt Caching Cost Simulator"
+  subtitle="Compare monthly spend across OpenAI, Anthropic, Google Gemini, DeepSeek, and Groq with prompt cache hit rates, reasoning token multipliers, and batch API discounts."
+  metaDescription="Interactive multivariable LLM API cost simulator comparing GPT-4.1, Claude 3.7 Sonnet, Gemini 2.5, DeepSeek, and Groq with prompt caching, thinking token multipliers, and batch discounts."
+  canonicalPath="/llm-api-cost-calculator/"
+  faqs={faqs}
+>
+  <Fragment slot="controls">
+    <div class="preset-group" role="group" aria-label="Workload presets">
+      <button type="button" class="preset-btn" data-preset="mvp" aria-pressed="false">Startup MVP</button>
+      <button type="button" class="preset-btn" data-preset="scaleup" aria-pressed="true">Scale-up SaaS</button>
+      <button type="button" class="preset-btn" data-preset="enterprise" aria-pressed="false">Enterprise Batch</button>
+    </div>
+
+    <div class="control-field">
+      <div class="control-row">
+        <label class="control-label" for="dailyRequestsNum">Daily requests</label>
+        <input class="num-input" id="dailyRequestsNum" type="number" min="100" max="500000" step="100" value="45000" />
+      </div>
+      <input class="range-input" id="dailyRequestsRange" type="range" min="100" max="500000" step="100" value="45000" aria-label="Daily requests slider" />
+    </div>
+
+    <div class="control-field">
+      <div class="control-row">
+        <label class="control-label" for="systemPromptNum">System prompt tokens</label>
+        <input class="num-input" id="systemPromptNum" type="number" min="0" max="32000" step="100" value="3200" />
+      </div>
+      <input class="range-input" id="systemPromptRange" type="range" min="0" max="32000" step="100" value="3200" aria-label="System prompt tokens slider" />
+      <span class="control-hint">Cacheable prefix shared across requests</span>
+    </div>
+
+    <div class="control-field">
+      <div class="control-row">
+        <label class="control-label" for="dynamicInputNum">Dynamic input tokens</label>
+        <input class="num-input" id="dynamicInputNum" type="number" min="50" max="32000" step="50" value="1200" />
+      </div>
+      <input class="range-input" id="dynamicInputRange" type="range" min="50" max="32000" step="50" value="1200" aria-label="Dynamic input tokens slider" />
+    </div>
+
+    <div class="control-field">
+      <div class="control-row">
+        <label class="control-label" for="outputTokensNum">Visible output tokens</label>
+        <input class="num-input" id="outputTokensNum" type="number" min="50" max="16000" step="50" value="700" />
+      </div>
+      <input class="range-input" id="outputTokensRange" type="range" min="50" max="16000" step="50" value="700" aria-label="Visible output tokens slider" />
+    </div>
+
+    <div class="control-field">
+      <div class="control-row">
+        <label class="control-label" for="cacheHitNum">Prompt cache hit rate (%)</label>
+        <input class="num-input" id="cacheHitNum" type="number" min="0" max="95" step="5" value="75" />
+      </div>
+      <input class="range-input" id="cacheHitRange" type="range" min="0" max="95" step="5" value="75" aria-label="Prompt cache hit rate slider" />
+    </div>
+
+    <div class="control-field">
+      <div class="control-row">
+        <label class="control-label" for="reasoningNum">Reasoning token multiplier (x)</label>
+        <input class="num-input" id="reasoningNum" type="number" min="1" max="5" step="0.25" value="2" />
+      </div>
+      <input class="range-input" id="reasoningRange" type="range" min="1" max="5" step="0.25" value="2" aria-label="Reasoning token multiplier slider" />
+      <span class="control-hint">Applied to output tokens on reasoning models</span>
+    </div>
+
+    <div class="toggle-row">
+      <label class="control-label" for="batchToggle">Batch API 50% discount (24h async)</label>
+      <input class="toggle-checkbox" id="batchToggle" type="checkbox" />
+    </div>
+  </Fragment>
+
+  <Fragment slot="results">
+    <div class="kpi-strip">
+      <div class="kpi-cell">
+        <p class="kpi-label">Lowest monthly spend</p>
+        <p class="kpi-value accent" id="kpiCheapest">$0</p>
+        <p class="kpi-sub" id="kpiCheapestName">—</p>
+      </div>
+      <div class="kpi-cell">
+        <p class="kpi-label">Flagship (Claude 3.7 Sonnet)</p>
+        <p class="kpi-value" id="kpiFlagship">$0</p>
+        <p class="kpi-sub" id="kpiCacheSavings">Cache savings: $0/mo</p>
+      </div>
+      <div class="kpi-cell">
+        <p class="kpi-label">Monthly token throughput</p>
+        <p class="kpi-value" id="kpiVolume">0M</p>
+        <p class="kpi-sub" id="kpiReqCount">0 requests/mo</p>
+      </div>
+    </div>
+
+    <div class="results-actions">
+      <span class="control-hint">Shareable URL updates automatically as you adjust parameters.</span>
+      <div class="action-buttons">
+        <button type="button" class="btn-secondary" id="copyUrlBtn">Copy scenario URL</button>
+        <button type="button" class="btn-primary" id="exportCsvBtn">Export CSV</button>
+      </div>
+    </div>
+
+    <div class="chart-block">
+      <h2 class="block-heading">Monthly cost comparison by model (USD)</h2>
+      <div class="chart-stage" id="barChartStage"></div>
+    </div>
+
+    <div class="chart-block">
+      <h2 class="block-heading">Prompt cache hit-rate sensitivity (0% to 95%)</h2>
+      <div class="chart-stage" id="curveChartStage"></div>
+    </div>
+
+    <div class="table-wrap">
+      <table class="data-table">
+        <thead>
+          <tr>
+            <th>Model</th>
+            <th>Provider</th>
+            <th class="num">Input + Cache</th>
+            <th class="num">Output</th>
+            <th class="num">Cache saved</th>
+            <th class="num">Monthly total</th>
+          </tr>
+        </thead>
+        <tbody id="modelTableBody"></tbody>
+      </table>
+    </div>
+  </Fragment>
+
+  <Fragment slot="formulas">
+    <div class="formula-grid">
+      <div>
+        <h3>Monthly cost with prompt caching</h3>
+        <div class="formula-box">
+          Monthly = (N_req * 30 / 10^6) * d_batch * [<br />
+          &nbsp;&nbsp;(T_sys * (1 - h) + T_dyn) * P_in<br />
+          &nbsp;&nbsp;+ (T_sys * h) * P_cache<br />
+          &nbsp;&nbsp;+ (T_out * m_reason) * P_out ]
+        </div>
+        <p>
+          Where <code>h</code> is the prompt cache hit rate (0–0.95), <code>m_reason</code> is the hidden reasoning token multiplier (1.0 for standard models), and <code>d_batch</code> is 0.50 when Batch API is enabled on supported providers.
+        </p>
+      </div>
+      <div>
+        <h3>Cache savings &amp; per-1k request unit economics</h3>
+        <div class="formula-box">
+          CacheSavings = Monthly(h = 0) - Monthly(h)<br />
+          UnitCost_1k = (Monthly / (N_req * 30)) * 1000
+        </div>
+        <p>
+          System prompts larger than 1,024 tokens trigger automatic or explicit prefix caching on OpenAI, Anthropic, and Google Gemini. DeepSeek applies disk-backed prefix caching automatically without batch tier discounts.
+        </p>
+      </div>
+    </div>
+  </Fragment>
+</SimulatorLayout>
+
+<script>
+  import { calculateLlmApiCost, LLM_API_PRESETS, type LlmApiInput } from '../../lib/calculators/llm-api';
+  import { formatUsd, formatCompactUsd, formatCompactNumber, downloadCsv } from '../../lib/format';
+  import { readStateFromUrl, writeStateToUrl, copyCurrentUrl, type ParamSpec } from '../../lib/url-state';
+  import { renderHorizontalBarChart, renderLineChart, CHART_COLORS } from '../../lib/svg-charts';
+
+  const SPEC: ParamSpec = {
+    dailyRequests: 'number',
+    systemPromptTokens: 'number',
+    dynamicInputTokens: 'number',
+    outputTokens: 'number',
+    cacheHitRate: 'number',
+    reasoningMultiplier: 'number',
+    useBatchApi: 'boolean',
+  };
+
+  let state: LlmApiInput = readStateFromUrl({ ...LLM_API_PRESETS.scaleup }, SPEC);
+
+  const pairs: { key: keyof LlmApiInput; numId: string; rangeId: string; scale?: number }[] = [
+    { key: 'dailyRequests', numId: 'dailyRequestsNum', rangeId: 'dailyRequestsRange' },
+    { key: 'systemPromptTokens', numId: 'systemPromptNum', rangeId: 'systemPromptRange' },
+    { key: 'dynamicInputTokens', numId: 'dynamicInputNum', rangeId: 'dynamicInputRange' },
+    { key: 'outputTokens', numId: 'outputTokensNum', rangeId: 'outputTokensRange' },
+    { key: 'cacheHitRate', numId: 'cacheHitNum', rangeId: 'cacheHitRange', scale: 100 },
+    { key: 'reasoningMultiplier', numId: 'reasoningNum', rangeId: 'reasoningRange' },
+  ];
+
+  const batchToggle = document.getElementById('batchToggle') as HTMLInputElement;
+  const presetBtns = Array.from(document.querySelectorAll<HTMLButtonElement>('.preset-btn'));
+
+  function syncInputsFromState() {
+    for (const p of pairs) {
+      const val = Number(state[p.key]) * (p.scale ?? 1);
+      const numEl = document.getElementById(p.numId) as HTMLInputElement;
+      const rangeEl = document.getElementById(p.rangeId) as HTMLInputElement;
+      const rounded = Math.round(val * 100) / 100;
+      numEl.value = String(rounded);
+      rangeEl.value = String(rounded);
+    }
+    batchToggle.checked = state.useBatchApi;
+  }
+
+  let lastResult = calculateLlmApiCost(state);
+
+  function render() {
+    lastResult = calculateLlmApiCost(state);
+    writeStateToUrl(state, SPEC);
+
+    document.getElementById('kpiCheapest')!.textContent = formatUsd(lastResult.cheapestModel.monthlyTotal);
+    document.getElementById('kpiCheapestName')!.textContent =
+      `${lastResult.cheapestModel.name} (${lastResult.cheapestModel.provider})`;
+
+    document.getElementById('kpiFlagship')!.textContent = formatUsd(lastResult.flagshipModel.monthlyTotal);
+    document.getElementById('kpiCacheSavings')!.textContent =
+      `Cache saves ${formatUsd(lastResult.flagshipModel.cacheSavingsUsd)}/mo`;
+
+    const totalTokensM = lastResult.monthlyInputTokensM + lastResult.monthlyOutputTokensM;
+    document.getElementById('kpiVolume')!.textContent = `${totalTokensM.toFixed(1)}M tok`;
+    document.getElementById('kpiReqCount')!.textContent =
+      `${formatCompactNumber(lastResult.monthlyRequests)} requests/mo`;
+
+    document.getElementById('barChartStage')!.innerHTML = renderHorizontalBarChart(
+      lastResult.models.map((m, i) => ({
+        label: `${m.name}`,
+        value: m.monthlyTotal,
+        displayValue: formatCompactUsd(m.monthlyTotal),
+        color: i === 0 ? CHART_COLORS[1] : m.id === 'claude-3.7-sonnet' ? CHART_COLORS[0] : '#475569',
+        highlight: i === 0 || m.id === 'claude-3.7-sonnet',
+      })),
+      { title: 'Monthly LLM API Cost by Model' }
+    );
+
+    document.getElementById('curveChartStage')!.innerHTML = renderLineChart({
+      title: 'Monthly LLM API Cost vs Prompt Cache Hit Rate',
+      xLabels: lastResult.cacheSensitivity.cacheRates.map((r) => `${Math.round(r * 100)}%`),
+      xAxisTitle: 'System prompt cache hit rate',
+      series: lastResult.cacheSensitivity.series.map((s, idx) => ({
+        name: s.name,
+        color: CHART_COLORS[idx % CHART_COLORS.length],
+        values: s.costs,
+      })),
+    });
+
+    const tbody = document.getElementById('modelTableBody')!;
+    tbody.innerHTML = lastResult.models
+      .map(
+        (m, idx) => `<tr class="${idx === 0 ? 'row-highlight' : ''}">
+          <td><strong>${m.name}</strong></td>
+          <td>${m.provider}</td>
+          <td class="num">${formatUsd(m.monthlyInputCost + m.monthlyCachedCost)}</td>
+          <td class="num">${formatUsd(m.monthlyOutputCost)}</td>
+          <td class="num status-ok">${m.cacheSavingsUsd > 0 ? '-' + formatUsd(m.cacheSavingsUsd) : '$0.00'}</td>
+          <td class="num"><strong>${formatUsd(m.monthlyTotal)}</strong></td>
+        </tr>`
+      )
+      .join('');
+  }
+
+  for (const p of pairs) {
+    const numEl = document.getElementById(p.numId) as HTMLInputElement;
+    const rangeEl = document.getElementById(p.rangeId) as HTMLInputElement;
+    const onInput = (rawVal: string) => {
+      const parsed = Number(rawVal);
+      if (!Number.isFinite(parsed)) return;
+      (state as any)[p.key] = p.scale ? parsed / p.scale : parsed;
+      numEl.value = rawVal;
+      rangeEl.value = rawVal;
+      presetBtns.forEach((b) => b.setAttribute('aria-pressed', 'false'));
+      render();
+    };
+    numEl.addEventListener('input', () => onInput(numEl.value));
+    rangeEl.addEventListener('input', () => onInput(rangeEl.value));
+  }
+
+  batchToggle.addEventListener('change', () => {
+    state.useBatchApi = batchToggle.checked;
+    presetBtns.forEach((b) => b.setAttribute('aria-pressed', 'false'));
+    render();
+  });
+
+  presetBtns.forEach((btn) => {
+    btn.addEventListener('click', () => {
+      const key = btn.dataset.preset!;
+      if (LLM_API_PRESETS[key]) {
+        state = { ...LLM_API_PRESETS[key] };
+        presetBtns.forEach((b) => b.setAttribute('aria-pressed', b === btn ? 'true' : 'false'));
+        syncInputsFromState();
+        render();
+      }
+    });
+  });
+
+  document.getElementById('copyUrlBtn')!.addEventListener('click', (e) => {
+    copyCurrentUrl(e.currentTarget as HTMLButtonElement);
+  });
+
+  document.getElementById('exportCsvBtn')!.addEventListener('click', () => {
+    downloadCsv(
+      'tokenscale-llm-api-cost.csv',
+      ['Model', 'Provider', 'Tier', 'Input + Cache USD', 'Output USD', 'Cache Savings USD', 'Monthly Total USD', 'Cost per 1k Requests USD'],
+      lastResult.models.map((m) => [
+        m.name,
+        m.provider,
+        m.tier,
+        (m.monthlyInputCost + m.monthlyCachedCost).toFixed(2),
+        m.monthlyOutputCost.toFixed(2),
+        m.cacheSavingsUsd.toFixed(2),
+        m.monthlyTotal.toFixed(2),
+        m.costPer1kRequests.toFixed(4),
+      ])
+    );
+  });
+
+  syncInputsFromState();
+  render();
+</script>

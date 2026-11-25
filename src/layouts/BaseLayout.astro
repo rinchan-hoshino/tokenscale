@@ -1,0 +1,84 @@
+---
+import '../styles/global.css';
+import { SIMULATORS } from '../data/simulators';
+import pricing from '../data/pricing-2026.json';
+
+interface Props {
+  title: string;
+  description: string;
+  canonicalPath: string;
+  jsonLd?: Record<string, unknown>[];
+}
+
+const { title, description, canonicalPath, jsonLd = [] } = Astro.props;
+const siteOrigin = 'https://tokenscale.dev';
+const canonicalUrl = `${siteOrigin}${canonicalPath}`;
+const currentPath = Astro.url.pathname;
+---
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>{title}</title>
+    <meta name="description" content={description} />
+    <link rel="canonical" href={canonicalUrl} />
+    <meta property="og:type" content="website" />
+    <meta property="og:title" content={title} />
+    <meta property="og:description" content={description} />
+    <meta property="og:url" content={canonicalUrl} />
+    <meta name="theme-color" content="#F8FAFC" />
+    <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+    {jsonLd.map((schema) => (
+      <script type="application/ld+json" set:html={JSON.stringify(schema)} />
+    ))}
+  </head>
+  <body>
+    <header class="site-header">
+      <div class="container header-inner">
+        <a href="/" class="brand-wordmark" aria-label="TokenScale Home">
+          <svg class="brand-mark" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+            <rect x="2" y="2" width="20" height="20" rx="4" stroke="#1D4ED8" stroke-width="2" />
+            <path d="M7 15.5V11.5M12 15.5V8.5M17 15.5V6.5" stroke="#0F172A" stroke-width="2" stroke-linecap="round" />
+          </svg>
+          <span>TokenScale</span>
+        </a>
+        <nav class="site-nav" aria-label="Primary simulators">
+          {SIMULATORS.map((sim) => (
+            <a
+              href={sim.href}
+              class="nav-link"
+              aria-current={currentPath === sim.href ? 'page' : undefined}
+            >
+              {sim.navLabel}
+            </a>
+          ))}
+          <a
+            href="/about/"
+            class="nav-link"
+            aria-current={currentPath === '/about/' ? 'page' : undefined}
+          >
+            Methodology
+          </a>
+        </nav>
+      </div>
+    </header>
+
+    <main>
+      <slot />
+    </main>
+
+    <footer class="site-footer">
+      <div class="container footer-inner">
+        <div>
+          TokenScale FinOps Bench &middot; Pricing dataset v{pricing.metadata.version} (updated {pricing.metadata.lastUpdated}) &middot; 100% client-side, zero telemetry.
+        </div>
+        <div class="footer-links">
+          <a href="/">All simulators</a>
+          <a href="/about/">Methodology &amp; pricing sources</a>
+          <a href="/sitemap.xml">Sitemap</a>
+        </div>
+      </div>
+    </footer>
+  </body>
+</html>

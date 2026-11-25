@@ -1,0 +1,330 @@
+---
+import SimulatorLayout from '../../layouts/SimulatorLayout.astro';
+
+const faqs = [
+  {
+    question: 'How much RAM does Scalar (INT8) or Binary (1-bit) quantization save?',
+    answer:
+      'Standard FP32 embeddings store 4 bytes per dimension (6 KB per 1536-d vector). Scalar INT8 quantization cuts raw vector memory by 4x with less than 1% recall drop, while Binary 1-bit quantization compresses vectors by up to 32x—often paired with rescoring the top-100 candidates.',
+  },
+  {
+    question: 'Why does HNSW index RAM exceed raw vector size by 1.5x to 1.65x?',
+    answer:
+      'Hierarchical Navigable Small World (HNSW) graphs store bi-directional neighbor pointer lists across multiple layers alongside payload metadata and filter indexes. Sizing RAM solely on raw float bytes causes severe OOM crashes or disk thrashing.',
+  },
+  {
+    question: 'When is Pinecone Serverless cheaper than dedicated RAM clusters?',
+    answer:
+      'At low-to-moderate query volume (under ~15–25 sustained QPS) with large vector corpora, serverless object-backed storage ($0.33/GB) avoids paying for idle 24/7 RAM nodes. Above ~100 sustained QPS, self-hosted pgvector or Qdrant Cloud clusters usually win on unit economics.',
+  },
+  {
+    question: 'Why does chunk overlap affect total vector database cost?',
+    answer:
+      'Overlap reduces the effective stride between chunks. A 25% overlap increases total chunk count—and therefore embedding spend, HNSW RAM, and query latency—by 33% compared to zero overlap.',
+  },
+];
+---
+<SimulatorLayout
+  simId="rag-vector"
+  pageTitle="RAG Vector Database & Embedding Cost Simulator | TokenScale"
+  h1="RAG Vector Database & Embedding Cost Simulator"
+  subtitle="Calculate chunk counts, HNSW memory with INT8 or binary quantization, embedding refresh bills, and monthly QPS costs across pgvector, Qdrant, Pinecone, and Weaviate."
+  metaDescription="Interactive RAG vector database cost calculator sizing document chunks, 768/1536/3072-d embeddings, scalar and binary quantization, and monthly bills across pgvector, Qdrant, Pinecone, and Weaviate."
+  canonicalPath="/rag-vector-cost-calculator/"
+  faqs={faqs}
+>
+  <Fragment slot="controls">
+    <div class="preset-group" role="group" aria-label="RAG corpus presets">
+      <button type="button" class="preset-btn" data-preset="mvp" aria-pressed="false">Startup MVP</button>
+      <button type="button" class="preset-btn" data-preset="scaleup" aria-pressed="true">Scale-up SaaS</button>
+      <button type="button" class="preset-btn" data-preset="enterprise" aria-pressed="false">Enterprise Batch</button>
+    </div>
+
+    <div class="control-field">
+      <div class="control-row">
+        <label class="control-label" for="docsNum">Documents in corpus</label>
+        <input class="num-input" id="docsNum" type="number" min="1000" max="50000000" step="10000" value="1000000" />
+      </div>
+      <input class="range-input" id="docsRange" type="range" min="10000" max="15000000" step="10000" value="1000000" aria-label="Documents count slider" />
+    </div>
+
+    <div class="control-field">
+      <div class="control-row">
+        <label class="control-label" for="chunkNum">Chunk size (tokens)</label>
+        <input class="num-input" id="chunkNum" type="number" min="256" max="2048" step="64" value="512" />
+      </div>
+      <input class="range-input" id="chunkRange" type="range" min="256" max="2048" step="64" value="512" aria-label="Chunk size slider" />
+    </div>
+
+    <div class="control-field">
+      <div class="control-row">
+        <label class="control-label" for="overlapNum">Chunk overlap (%)</label>
+        <input class="num-input" id="overlapNum" type="number" min="0" max="30" step="5" value="15" />
+      </div>
+      <input class="range-input" id="overlapRange" type="range" min="0" max="30" step="5" value="15" aria-label="Chunk overlap slider" />
+    </div>
+
+    <div class="control-field">
+      <label class="control-label" for="dimSelect">Embedding dimensions</label>
+      <select class="select-input" id="dimSelect">
+        <option value="768">768 dimensions (compact / open-source)</option>
+        <option value="1536" selected>1536 dimensions (text-embedding-3-small)</option>
+        <option value="3072">3072 dimensions (text-embedding-3-large)</option>
+      </select>
+    </div>
+
+    <div class="control-field">
+      <label class="control-label" for="quantSelect">Vector quantization</label>
+      <select class="select-input" id="quantSelect">
+        <option value="fp32">None — FP32 (4 bytes/dim)</option>
+        <option value="int8" selected>Scalar — INT8 (1 byte/dim, ~4x smaller)</option>
+        <option value="binary">Binary — 1-bit (0.125 byte/dim, ~12x smaller w/ meta)</option>
+      </select>
+    </div>
+
+    <div class="control-field">
+      <div class="control-row">
+        <label class="control-label" for="updateNum">Monthly corpus churn (%)</label>
+        <input class="num-input" id="updateNum" type="number" min="1" max="50" step="1" value="12" />
+      </div>
+      <input class="range-input" id="updateRange" type="range" min="1" max="50" step="1" value="12" aria-label="Monthly update rate slider" />
+    </div>
+
+    <div class="control-field">
+      <div class="control-row">
+        <label class="control-label" for="qpsNum">Sustained query QPS</label>
+        <input class="num-input" id="qpsNum" type="number" min="1" max="500" step="1" value="45" />
+      </div>
+      <input class="range-input" id="qpsRange" type="range" min="1" max="500" step="1" value="45" aria-label="Sustained query QPS slider" />
+    </div>
+  </Fragment>
+
+  <Fragment slot="results">
+    <div class="kpi-strip">
+      <div class="kpi-cell">
+        <p class="kpi-label">Lowest monthly stack</p>
+        <p class="kpi-value accent" id="kpiCheapest">$0</p>
+        <p class="kpi-sub" id="kpiCheapestName">—</p>
+      </div>
+      <div class="kpi-cell">
+        <p class="kpi-label">Total indexed vectors</p>
+        <p class="kpi-value" id="kpiVectors">0M</p>
+        <p class="kpi-sub" id="kpiCompression">0 GB quantized</p>
+      </div>
+      <div class="kpi-cell">
+        <p class="kpi-label">Initial embedding backfill</p>
+        <p class="kpi-value" id="kpiBackfill">$0</p>
+        <p class="kpi-sub" id="kpiRefresh">Refresh: $0/mo</p>
+      </div>
+    </div>
+
+    <div class="results-actions">
+      <span class="control-hint" id="queryVolNote">0M vector queries / month.</span>
+      <div class="action-buttons">
+        <button type="button" class="btn-secondary" id="copyUrlBtn">Copy scenario URL</button>
+        <button type="button" class="btn-primary" id="exportCsvBtn">Export CSV</button>
+      </div>
+    </div>
+
+    <div class="chart-block">
+      <h2 class="block-heading">Monthly RAG vector stack cost breakdown (USD)</h2>
+      <div class="chart-stage" id="ragBarStage"></div>
+    </div>
+
+    <div class="table-wrap">
+      <table class="data-table">
+        <thead>
+          <tr>
+            <th>Vector database</th>
+            <th class="num">Index RAM</th>
+            <th class="num">Storage / RAM</th>
+            <th class="num">Query compute</th>
+            <th class="num">Embed refresh</th>
+            <th class="num">Monthly total</th>
+          </tr>
+        </thead>
+        <tbody id="ragTableBody"></tbody>
+      </table>
+    </div>
+  </Fragment>
+
+  <Fragment slot="formulas">
+    <div class="formula-grid">
+      <div>
+        <h3>Chunking &amp; quantized HNSW footprint</h3>
+        <div class="formula-box">
+          ChunksPerDoc = ceil(AvgDocTokens / (ChunkSize * (1 - Overlap)))<br />
+          Vectors = Docs * ChunksPerDoc<br />
+          IndexRAM_GiB = Vectors * (Dim * B_quant + 256) * HNSW_overhead / 1024^3
+        </div>
+        <p>
+          Includes 256 bytes per vector for document IDs and filterable metadata payloads, multiplied by each engine's HNSW graph overhead factor (1.20x–1.65x).
+        </p>
+      </div>
+      <div>
+        <h3>Embedding backfill &amp; monthly query volume</h3>
+        <div class="formula-box">
+          MonthlyQueries = QPS * 2,592,000<br />
+          EmbedBackfill = (Vectors * ChunkSize / 10^6) * $0.02
+        </div>
+        <p>
+          Embedding ingestion is benchmarked against <code>text-embedding-3-small</code> list pricing ($0.02 per 1M tokens) with incremental monthly re-indexing proportional to corpus churn.
+        </p>
+      </div>
+    </div>
+  </Fragment>
+</SimulatorLayout>
+
+<script>
+  import { calculateRagVectorCost, RAG_VECTOR_PRESETS, type RagVectorInput, type VectorQuantization } from '../../lib/calculators/rag-vector';
+  import { formatUsd, formatCompactUsd, formatCompactNumber, downloadCsv } from '../../lib/format';
+  import { readStateFromUrl, writeStateToUrl, copyCurrentUrl, type ParamSpec } from '../../lib/url-state';
+  import { renderStackedBarChart, CHART_COLORS } from '../../lib/svg-charts';
+
+  const SPEC: ParamSpec = {
+    documents: 'number',
+    avgTokensPerDoc: 'number',
+    chunkSizeTokens: 'number',
+    chunkOverlapPct: 'number',
+    dimensions: 'number',
+    quantization: 'string',
+    monthlyUpdatePct: 'number',
+    queryQps: 'number',
+  };
+
+  let state: RagVectorInput = readStateFromUrl({ ...RAG_VECTOR_PRESETS.scaleup }, SPEC);
+
+  const pairs: { key: keyof RagVectorInput; numId: string; rangeId: string }[] = [
+    { key: 'documents', numId: 'docsNum', rangeId: 'docsRange' },
+    { key: 'chunkSizeTokens', numId: 'chunkNum', rangeId: 'chunkRange' },
+    { key: 'chunkOverlapPct', numId: 'overlapNum', rangeId: 'overlapRange' },
+    { key: 'monthlyUpdatePct', numId: 'updateNum', rangeId: 'updateRange' },
+    { key: 'queryQps', numId: 'qpsNum', rangeId: 'qpsRange' },
+  ];
+  const dimSelect = document.getElementById('dimSelect') as HTMLSelectElement;
+  const quantSelect = document.getElementById('quantSelect') as HTMLSelectElement;
+  const presetBtns = Array.from(document.querySelectorAll<HTMLButtonElement>('.preset-btn'));
+
+  function syncInputsFromState() {
+    for (const p of pairs) {
+      (document.getElementById(p.numId) as HTMLInputElement).value = String(state[p.key]);
+      (document.getElementById(p.rangeId) as HTMLInputElement).value = String(state[p.key]);
+    }
+    dimSelect.value = String(state.dimensions);
+    quantSelect.value = state.quantization;
+  }
+
+  let lastResult = calculateRagVectorCost(state);
+
+  function render() {
+    lastResult = calculateRagVectorCost(state);
+    writeStateToUrl(state, SPEC);
+
+    document.getElementById('kpiCheapest')!.textContent = formatUsd(lastResult.cheapest.monthlyTotalUsd);
+    document.getElementById('kpiCheapestName')!.textContent = lastResult.cheapest.name;
+
+    document.getElementById('kpiVectors')!.textContent = formatCompactNumber(lastResult.totalVectors);
+    document.getElementById('kpiCompression')!.textContent =
+      `${lastResult.quantizedVectorsGB.toFixed(1)} GiB (${lastResult.compressionRatio.toFixed(1)}x vs FP32)`;
+
+    document.getElementById('kpiBackfill')!.textContent = formatUsd(lastResult.initialEmbeddingUsd);
+    document.getElementById('kpiRefresh')!.textContent =
+      `Refresh: ${formatUsd(lastResult.monthlyEmbeddingRefreshUsd)}/mo`;
+
+    document.getElementById('queryVolNote')!.textContent =
+      `${lastResult.monthlyQueriesM.toFixed(1)}M queries/mo (${lastResult.chunksPerDoc} chunks/doc at ${state.dimensions}d).`;
+
+    document.getElementById('ragBarStage')!.innerHTML = renderStackedBarChart(
+      lastResult.providers.map((p) => ({
+        label: p.name,
+        totalDisplay: formatCompactUsd(p.monthlyTotalUsd),
+        segments: [
+          { label: 'Storage / RAM', value: p.storageCostUsd, color: CHART_COLORS[0] },
+          { label: 'Query compute', value: p.computeQueryUsd, color: CHART_COLORS[1] },
+          { label: 'Embedding refresh', value: p.embeddingRefreshUsd, color: CHART_COLORS[2] },
+        ],
+      })),
+      {
+        title: 'Monthly Vector Database Cost Breakdown',
+        legend: [
+          { label: 'Storage / RAM', color: CHART_COLORS[0] },
+          { label: 'Query compute', color: CHART_COLORS[1] },
+          { label: 'Embedding refresh', color: CHART_COLORS[2] },
+        ],
+      }
+    );
+
+    document.getElementById('ragTableBody')!.innerHTML = lastResult.providers
+      .map(
+        (p, idx) => `<tr class="${idx === 0 ? 'row-highlight' : ''}">
+          <td><strong>${p.name}</strong></td>
+          <td class="num">${p.indexRamGB.toFixed(1)} GiB</td>
+          <td class="num">${formatUsd(p.storageCostUsd)}</td>
+          <td class="num">${formatUsd(p.computeQueryUsd)}</td>
+          <td class="num">${formatUsd(p.embeddingRefreshUsd)}</td>
+          <td class="num"><strong>${formatUsd(p.monthlyTotalUsd)}</strong></td>
+        </tr>`
+      )
+      .join('');
+  }
+
+  for (const p of pairs) {
+    const numEl = document.getElementById(p.numId) as HTMLInputElement;
+    const rangeEl = document.getElementById(p.rangeId) as HTMLInputElement;
+    const onInput = (v: string) => {
+      const n = Number(v);
+      if (!Number.isFinite(n)) return;
+      (state as any)[p.key] = n;
+      numEl.value = v;
+      rangeEl.value = v;
+      presetBtns.forEach((b) => b.setAttribute('aria-pressed', 'false'));
+      render();
+    };
+    numEl.addEventListener('input', () => onInput(numEl.value));
+    rangeEl.addEventListener('input', () => onInput(rangeEl.value));
+  }
+
+  dimSelect.addEventListener('change', () => {
+    state.dimensions = Number(dimSelect.value) as 768 | 1536 | 3072;
+    render();
+  });
+
+  quantSelect.addEventListener('change', () => {
+    state.quantization = quantSelect.value as VectorQuantization;
+    render();
+  });
+
+  presetBtns.forEach((btn) => {
+    btn.addEventListener('click', () => {
+      const key = btn.dataset.preset!;
+      if (RAG_VECTOR_PRESETS[key]) {
+        state = { ...RAG_VECTOR_PRESETS[key] };
+        presetBtns.forEach((b) => b.setAttribute('aria-pressed', b === btn ? 'true' : 'false'));
+        syncInputsFromState();
+        render();
+      }
+    });
+  });
+
+  document.getElementById('copyUrlBtn')!.addEventListener('click', (e) => {
+    copyCurrentUrl(e.currentTarget as HTMLButtonElement);
+  });
+
+  document.getElementById('exportCsvBtn')!.addEventListener('click', () => {
+    downloadCsv(
+      'tokenscale-rag-vector-cost.csv',
+      ['Vector DB', 'Index RAM GiB', 'Storage/RAM USD', 'Query Compute USD', 'Embedding Refresh USD', 'Monthly Total USD'],
+      lastResult.providers.map((p) => [
+        p.name,
+        p.indexRamGB.toFixed(2),
+        p.storageCostUsd.toFixed(2),
+        p.computeQueryUsd.toFixed(2),
+        p.embeddingRefreshUsd.toFixed(2),
+        p.monthlyTotalUsd.toFixed(2),
+      ])
+    );
+  });
+
+  syncInputsFromState();
+  render();
+</script>

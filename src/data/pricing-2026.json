@@ -1,0 +1,377 @@
+{
+  "metadata": {
+    "version": "2026.4",
+    "lastUpdated": "2026-11-01",
+    "currency": "USD",
+    "notes": "Published list pricing for US Tier-1 regions. Update this single file quarterly to refresh all 6 simulators."
+  },
+  "llmApiModels": [
+    {
+      "id": "gpt-4.1",
+      "name": "GPT-4.1",
+      "provider": "OpenAI",
+      "tier": "Flagship",
+      "inputPer1M": 2.00,
+      "cachedInputPer1M": 0.50,
+      "outputPer1M": 8.00,
+      "supportsBatch": true,
+      "batchDiscount": 0.50,
+      "isReasoning": false
+    },
+    {
+      "id": "gpt-4.1-mini",
+      "name": "GPT-4.1 mini",
+      "provider": "OpenAI",
+      "tier": "Efficient",
+      "inputPer1M": 0.40,
+      "cachedInputPer1M": 0.10,
+      "outputPer1M": 1.60,
+      "supportsBatch": true,
+      "batchDiscount": 0.50,
+      "isReasoning": false
+    },
+    {
+      "id": "o3-mini",
+      "name": "o3-mini",
+      "provider": "OpenAI",
+      "tier": "Reasoning",
+      "inputPer1M": 1.10,
+      "cachedInputPer1M": 0.55,
+      "outputPer1M": 4.40,
+      "supportsBatch": true,
+      "batchDiscount": 0.50,
+      "isReasoning": true
+    },
+    {
+      "id": "claude-3.7-sonnet",
+      "name": "Claude 3.7 Sonnet",
+      "provider": "Anthropic",
+      "tier": "Flagship",
+      "inputPer1M": 3.00,
+      "cachedInputPer1M": 0.30,
+      "outputPer1M": 15.00,
+      "supportsBatch": true,
+      "batchDiscount": 0.50,
+      "isReasoning": true
+    },
+    {
+      "id": "claude-3.5-haiku",
+      "name": "Claude 3.5 Haiku",
+      "provider": "Anthropic",
+      "tier": "Efficient",
+      "inputPer1M": 0.80,
+      "cachedInputPer1M": 0.08,
+      "outputPer1M": 4.00,
+      "supportsBatch": true,
+      "batchDiscount": 0.50,
+      "isReasoning": false
+    },
+    {
+      "id": "gemini-2.5-pro",
+      "name": "Gemini 2.5 Pro",
+      "provider": "Google",
+      "tier": "Flagship",
+      "inputPer1M": 1.25,
+      "cachedInputPer1M": 0.3125,
+      "outputPer1M": 10.00,
+      "supportsBatch": true,
+      "batchDiscount": 0.50,
+      "isReasoning": true
+    },
+    {
+      "id": "gemini-2.5-flash",
+      "name": "Gemini 2.5 Flash",
+      "provider": "Google",
+      "tier": "Efficient",
+      "inputPer1M": 0.15,
+      "cachedInputPer1M": 0.0375,
+      "outputPer1M": 0.60,
+      "supportsBatch": true,
+      "batchDiscount": 0.50,
+      "isReasoning": false
+    },
+    {
+      "id": "deepseek-v3",
+      "name": "DeepSeek-V3",
+      "provider": "DeepSeek",
+      "tier": "Efficient",
+      "inputPer1M": 0.27,
+      "cachedInputPer1M": 0.07,
+      "outputPer1M": 1.10,
+      "supportsBatch": false,
+      "batchDiscount": 0.50,
+      "isReasoning": false
+    },
+    {
+      "id": "deepseek-r1",
+      "name": "DeepSeek-R1",
+      "provider": "DeepSeek",
+      "tier": "Reasoning",
+      "inputPer1M": 0.55,
+      "cachedInputPer1M": 0.14,
+      "outputPer1M": 2.19,
+      "supportsBatch": false,
+      "batchDiscount": 0.50,
+      "isReasoning": true
+    },
+    {
+      "id": "groq-llama-3.3-70b",
+      "name": "Llama 3.3 70B",
+      "provider": "Groq",
+      "tier": "Fast Open",
+      "inputPer1M": 0.59,
+      "cachedInputPer1M": 0.59,
+      "outputPer1M": 0.79,
+      "supportsBatch": true,
+      "batchDiscount": 0.50,
+      "isReasoning": false
+    }
+  ],
+  "vramModels": [
+    {
+      "id": "qwen-2.5-7b",
+      "name": "Qwen 2.5 7B",
+      "architecture": "Dense",
+      "paramsB": 7.6,
+      "activeParamsB": 7.6,
+      "layers": 28,
+      "kvHeads": 4,
+      "headDim": 128
+    },
+    {
+      "id": "llama-3.1-8b",
+      "name": "Llama 3.1 8B",
+      "architecture": "Dense",
+      "paramsB": 8.0,
+      "activeParamsB": 8.0,
+      "layers": 32,
+      "kvHeads": 8,
+      "headDim": 128
+    },
+    {
+      "id": "qwen-2.5-14b",
+      "name": "Qwen 2.5 14B",
+      "architecture": "Dense",
+      "paramsB": 14.8,
+      "activeParamsB": 14.8,
+      "layers": 48,
+      "kvHeads": 8,
+      "headDim": 128
+    },
+    {
+      "id": "qwen-2.5-32b",
+      "name": "Qwen 2.5 32B",
+      "architecture": "Dense",
+      "paramsB": 32.8,
+      "activeParamsB": 32.8,
+      "layers": 64,
+      "kvHeads": 8,
+      "headDim": 128
+    },
+    {
+      "id": "llama-3.3-70b",
+      "name": "Llama 3.3 70B",
+      "architecture": "Dense",
+      "paramsB": 70.6,
+      "activeParamsB": 70.6,
+      "layers": 80,
+      "kvHeads": 8,
+      "headDim": 128
+    },
+    {
+      "id": "mistral-large-123b",
+      "name": "Mistral Large 123B",
+      "architecture": "Dense",
+      "paramsB": 123.0,
+      "activeParamsB": 123.0,
+      "layers": 88,
+      "kvHeads": 8,
+      "headDim": 128
+    },
+    {
+      "id": "mixtral-8x22b-moe",
+      "name": "Mixtral 8x22B (MoE)",
+      "architecture": "MoE",
+      "paramsB": 141.0,
+      "activeParamsB": 39.0,
+      "layers": 56,
+      "kvHeads": 8,
+      "headDim": 128
+    }
+  ],
+  "quantizations": [
+    { "id": "FP16", "label": "FP16 (16-bit)", "bytesPerParam": 2.0 },
+    { "id": "BF16", "label": "BF16 (16-bit)", "bytesPerParam": 2.0 },
+    { "id": "FP8", "label": "FP8 (8-bit)", "bytesPerParam": 1.05 },
+    { "id": "Q8_0", "label": "Q8_0 (8.5 bpw)", "bytesPerParam": 1.0625 },
+    { "id": "Q6_K", "label": "Q6_K (6.6 bpw)", "bytesPerParam": 0.825 },
+    { "id": "Q4_K_M", "label": "Q4_K_M (4.8 bpw)", "bytesPerParam": 0.60 }
+  ],
+  "kvPrecisions": [
+    { "id": "FP16", "label": "FP16 (2 bytes)", "bytesPerElement": 2.0 },
+    { "id": "FP8", "label": "FP8 (1 byte)", "bytesPerElement": 1.0 },
+    { "id": "Q8", "label": "Q8_0 (1.06 bytes)", "bytesPerElement": 1.0625 }
+  ],
+  "hardwareProfiles": [
+    { "id": "rtx-4090", "name": "NVIDIA RTX 4090", "vramGB": 24, "bandwidthGBs": 1008, "category": "Consumer GPU", "hourlyCloudUsd": 0.44 },
+    { "id": "rtx-5090", "name": "NVIDIA RTX 5090", "vramGB": 32, "bandwidthGBs": 1792, "category": "Consumer GPU", "hourlyCloudUsd": 0.78 },
+    { "id": "l40s", "name": "NVIDIA L40S", "vramGB": 48, "bandwidthGBs": 864, "category": "Data Center GPU", "hourlyCloudUsd": 1.14 },
+    { "id": "a100-80", "name": "NVIDIA A100 80GB SXM", "vramGB": 80, "bandwidthGBs": 2039, "category": "Data Center GPU", "hourlyCloudUsd": 1.64 },
+    { "id": "h100-80", "name": "NVIDIA H100 80GB SXM", "vramGB": 80, "bandwidthGBs": 3350, "category": "Data Center GPU", "hourlyCloudUsd": 2.69 },
+    { "id": "2xh100", "name": "2x NVIDIA H100 80GB", "vramGB": 160, "bandwidthGBs": 6700, "category": "Multi-GPU Node", "hourlyCloudUsd": 5.38 },
+    { "id": "m4-max-64", "name": "Apple M4 Max (64GB Unified)", "vramGB": 48, "bandwidthGBs": 546, "category": "Apple Silicon", "hourlyCloudUsd": null },
+    { "id": "m4-max-128", "name": "Apple M4 Max (128GB Unified)", "vramGB": 96, "bandwidthGBs": 546, "category": "Apple Silicon", "hourlyCloudUsd": null },
+    { "id": "m3-ultra-192", "name": "Apple M3 Ultra (192GB Unified)", "vramGB": 144, "bandwidthGBs": 800, "category": "Apple Silicon", "hourlyCloudUsd": null }
+  ],
+  "gpuBreakevenProfiles": [
+    {
+      "id": "h100-sxm",
+      "name": "H100 80GB SXM (vLLM FP8)",
+      "hourlyUsd": 2.69,
+      "peakTokPerSec": 1850,
+      "minGpus": 1
+    },
+    {
+      "id": "l40s-48",
+      "name": "L40S 48GB (vLLM FP8)",
+      "hourlyUsd": 1.14,
+      "peakTokPerSec": 720,
+      "minGpus": 1
+    },
+    {
+      "id": "a100-80",
+      "name": "A100 80GB SXM (vLLM INT8)",
+      "hourlyUsd": 1.64,
+      "peakTokPerSec": 1100,
+      "minGpus": 1
+    },
+    {
+      "id": "rtx-4090",
+      "name": "RTX 4090 24GB (vLLM AWQ)",
+      "hourlyUsd": 0.44,
+      "peakTokPerSec": 480,
+      "minGpus": 1
+    }
+  ],
+  "cloudStorageProviders": [
+    {
+      "id": "cloudflare-r2",
+      "name": "Cloudflare R2",
+      "storagePerGBMonth": 0.015,
+      "egressPerGB": 0.0,
+      "freeEgressMultiplierOfStorage": 0,
+      "classAPer1M": 4.50,
+      "classBPer1M": 0.36
+    },
+    {
+      "id": "backblaze-b2",
+      "name": "Backblaze B2",
+      "storagePerGBMonth": 0.006,
+      "egressPerGB": 0.01,
+      "freeEgressMultiplierOfStorage": 3,
+      "classAPer1M": 0.004,
+      "classBPer1M": 0.004
+    },
+    {
+      "id": "aws-s3-cf",
+      "name": "AWS S3 + CloudFront",
+      "storagePerGBMonth": 0.023,
+      "egressPerGB": 0.085,
+      "freeEgressMultiplierOfStorage": 0,
+      "classAPer1M": 5.00,
+      "classBPer1M": 0.40
+    },
+    {
+      "id": "gcs-standard",
+      "name": "Google Cloud Storage",
+      "storagePerGBMonth": 0.020,
+      "egressPerGB": 0.12,
+      "freeEgressMultiplierOfStorage": 0,
+      "classAPer1M": 5.00,
+      "classBPer1M": 0.40
+    }
+  ],
+  "ragVectorPricing": {
+    "embeddingPer1MTokens": 0.02,
+    "providers": [
+      {
+        "id": "pgvector",
+        "name": "pgvector (Self-Hosted)",
+        "ramCostPerGBMonth": 4.20,
+        "storageCostPerGBMonth": 0.12,
+        "baseMonthlyUsd": 45.0,
+        "qpsCapacityPerNode": 35,
+        "extraNodeMonthlyUsd": 95.0,
+        "hnswOverheadMultiplier": 1.65
+      },
+      {
+        "id": "qdrant-cloud",
+        "name": "Qdrant Cloud",
+        "ramCostPerGBMonth": 7.80,
+        "storageCostPerGBMonth": 0.25,
+        "baseMonthlyUsd": 25.0,
+        "qpsCapacityPerNode": 80,
+        "extraNodeMonthlyUsd": 85.0,
+        "hnswOverheadMultiplier": 1.50
+      },
+      {
+        "id": "pinecone-serverless",
+        "name": "Pinecone Serverless",
+        "storageCostPerGBMonth": 0.33,
+        "readUnitPer1M": 8.25,
+        "writeUnitPer1M": 2.00,
+        "baseMonthlyUsd": 0.0,
+        "hnswOverheadMultiplier": 1.20
+      },
+      {
+        "id": "weaviate-cloud",
+        "name": "Weaviate Cloud",
+        "ramCostPerGBMonth": 9.50,
+        "storageCostPerGBMonth": 0.25,
+        "baseMonthlyUsd": 25.0,
+        "qpsCapacityPerNode": 65,
+        "extraNodeMonthlyUsd": 110.0,
+        "hnswOverheadMultiplier": 1.55
+      }
+    ]
+  },
+  "voiceAiPricing": {
+    "telephonyPerMin": 0.014,
+    "cascadedStacks": [
+      {
+        "id": "deepgram-gpt41mini-elevenlabs",
+        "name": "Deepgram Nova-3 + GPT-4.1 mini + ElevenLabs Flash",
+        "sttPerMin": 0.0043,
+        "llmPerMin": 0.0045,
+        "ttsPerMin": 0.0420
+      },
+      {
+        "id": "deepgram-gemini-cartesia",
+        "name": "Deepgram Nova-3 + Gemini 2.5 Flash + Cartesia Sonic",
+        "sttPerMin": 0.0043,
+        "llmPerMin": 0.0018,
+        "ttsPerMin": 0.0280
+      }
+    ],
+    "realtimeModels": [
+      {
+        "id": "openai-realtime",
+        "name": "OpenAI Realtime (Speech-to-Speech)",
+        "audioInputPerMin": 0.060,
+        "audioOutputPerMin": 0.240
+      },
+      {
+        "id": "openai-realtime-mini",
+        "name": "OpenAI Realtime mini (S2S)",
+        "audioInputPerMin": 0.015,
+        "audioOutputPerMin": 0.060
+      },
+      {
+        "id": "gemini-live",
+        "name": "Gemini 2.5 Flash Live (S2S)",
+        "audioInputPerMin": 0.004,
+        "audioOutputPerMin": 0.022
+      }
+    ]
+  }
+}

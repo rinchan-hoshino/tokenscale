@@ -1,0 +1,75 @@
+---
+import BaseLayout from '../../layouts/BaseLayout.astro';
+import pricing from '../../data/pricing-2026.json';
+---
+<BaseLayout
+  title="Methodology & Pricing Sources | TokenScale"
+  description="How TokenScale models LLM API prompt caching, GPU VRAM KV-cache sizing, cloud egress cliffs, RAG vector RAM, and realtime Voice AI pipelines."
+  canonicalPath="/about/"
+>
+  <section class="page-head">
+    <div class="container">
+      <h1>Methodology &amp; Pricing Sources</h1>
+      <p class="page-subtitle">
+        Transparent mathematical models and versioned US Tier-1 list pricing powering all six TokenScale FinOps simulators.
+      </p>
+    </div>
+  </section>
+
+  <section class="doc-section" style="border-top:0;">
+    <div class="container">
+      <h2>Dataset version and update cadence</h2>
+      <div class="formula-grid">
+        <div>
+          <h3>Centralized pricing source</h3>
+          <p>
+            Every simulator reads from a single versioned file (<code>src/data/pricing-2026.json</code>, currently <strong>v{pricing.metadata.version}</strong>, last verified <strong>{pricing.metadata.lastUpdated}</strong>). All figures are denominated in {pricing.metadata.currency} using published on-demand list pricing for US primary regions.
+          </p>
+          <p>
+            Calculations run 100% locally in your browser with zero external network calls, zero third-party fonts, and zero analytics trackers.
+          </p>
+        </div>
+        <div>
+          <h3>Engineering boundaries</h3>
+          <ul>
+            <li>Monthly billing periods use 30 days for token/call volume and 730 hours for continuous GPU instances.</li>
+            <li>GPU VRAM and HNSW index footprints use binary GiB (1024^3 bytes) to match <code>nvidia-smi</code> and Linux RSS metrics.</li>
+            <li>Cloud object storage and egress use decimal TB (1,000 GB) to match AWS S3, Cloudflare R2, Backblaze B2, and GCS invoices.</li>
+          </ul>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section class="doc-section">
+    <div class="container">
+      <h2>Published LLM API rate snapshot (USD / 1M tokens)</h2>
+      <div class="table-wrap" style="border-top:0;padding-top:0;">
+        <table class="data-table">
+          <thead>
+            <tr>
+              <th>Model</th>
+              <th>Provider</th>
+              <th>Tier</th>
+              <th class="num">Input / 1M</th>
+              <th class="num">Cached in / 1M</th>
+              <th class="num">Output / 1M</th>
+            </tr>
+          </thead>
+          <tbody>
+            {pricing.llmApiModels.map((m) => (
+              <tr>
+                <td><strong>{m.name}</strong></td>
+                <td>{m.provider}</td>
+                <td>{m.tier}</td>
+                <td class="num">${m.inputPer1M.toFixed(2)}</td>
+                <td class="num">${m.cachedInputPer1M.toFixed(4)}</td>
+                <td class="num">${m.outputPer1M.toFixed(2)}</td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </section>
+</BaseLayout>

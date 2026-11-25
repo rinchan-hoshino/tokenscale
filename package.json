@@ -1,0 +1,21 @@
+{
+  "name": "tokenscale-finops-sim",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "astro dev",
+    "build": "astro build",
+    "preview": "astro preview",
+    "test": "vitest run",
+    "audit": "node scripts/audit-playwright.mjs"
+  },
+  "dependencies": {
+    "astro": "^5.7.0"
+  },
+  "devDependencies": {
+    "playwright-core": "^1.52.0",
+    "typescript": "^5.8.0",
+    "vitest": "^3.1.0"
+  }
+}

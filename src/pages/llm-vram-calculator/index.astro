@@ -1,0 +1,411 @@
+---
+import SimulatorLayout from '../../layouts/SimulatorLayout.astro';
+import pricing from '../../data/pricing-2026.json';
+
+const faqs = [
+  {
+    question: 'Why does KV-Cache grow so fast with 32K–128K context and concurrency?',
+    answer:
+      'Every active sequence allocates Key and Value tensors across every transformer layer for every token in context. Even with Grouped-Query Attention (GQA), running 16 concurrent 64K sequences on a 70B model can consume over 40 GiB in KV cache alone unless FP8 KV quantization is enabled.',
+  },
+  {
+    question: 'How does MoE (Mixture-of-Experts) affect VRAM vs decode speed?',
+    answer:
+      'MoE models like Mixtral 8x22B must hold all 141B parameters in VRAM, so memory capacity is governed by total parameters. However, token generation only reads the active 39B parameters per forward pass, yielding significantly higher decode tok/s on memory-bandwidth-bound GPUs.',
+  },
+  {
+    question: 'Why is Apple Silicon usable VRAM lower than total unified memory?',
+    answer:
+      'macOS reserves approximately 25% of unified RAM for the OS kernel and window server by default (configurable via iogpu.wired_limit_mb). A 64GB M4 Max exposes roughly 48GB safely to Metal inference engines like llama.cpp and MLX.',
+  },
+  {
+    question: 'How is the estimated decode tok/s calculated?',
+    answer:
+      'Autoregressive decoding at low batch sizes is memory-bandwidth bound. We estimate single-stream throughput using 72% of peak GPU HBM/unified memory bandwidth divided by active model weights plus per-sequence KV-cache reads.',
+  },
+];
+---
+<SimulatorLayout
+  simId="llm-vram"
+  pageTitle="Local LLM GPU VRAM & KV-Cache Sizing Simulator | TokenScale"
+  h1="Local LLM GPU VRAM, KV-Cache & Quantization Sizing"
+  subtitle="Calculate exact model weights, GQA KV-cache growth, CUDA overhead, hardware fit, and memory-bandwidth tok/s across NVIDIA GPUs and Apple Silicon."
+  metaDescription="Interactive local LLM VRAM calculator for 7B to 141B Dense and MoE models with FP16, FP8, Q8_0, Q6_K, and Q4_K_M quantization, 2K to 128K context KV-cache, and GPU hardware sizing."
+  canonicalPath="/llm-vram-calculator/"
+  faqs={faqs}
+>
+  <Fragment slot="controls">
+    <div class="preset-group" role="group" aria-label="Sizing presets">
+      <button type="button" class="preset-btn" data-preset="mvp" aria-pressed="false">Startup MVP</button>
+      <button type="button" class="preset-btn" data-preset="scaleup" aria-pressed="true">Scale-up SaaS</button>
+      <button type="button" class="preset-btn" data-preset="enterprise" aria-pressed="false">Enterprise Batch</button>
+    </div>
+
+    <div class="control-field">
+      <label class="control-label" for="modelSelect">Model architecture preset</label>
+      <select class="select-input" id="modelSelect">
+        {pricing.vramModels.map((m) => (
+          <option value={m.id}>{m.name} ({m.architecture}, {m.paramsB}B)</option>
+        ))}
+      </select>
+    </div>
+
+    <div class="control-field">
+      <div class="control-row">
+        <label class="control-label" for="paramsNum">Total parameters (B)</label>
+        <input class="num-input" id="paramsNum" type="number" min="1" max="405" step="0.5" value="32.8" />
+      </div>
+      <input class="range-input" id="paramsRange" type="range" min="1" max="200" step="0.5" value="32.8" aria-label="Total parameters slider" />
+    </div>
+
+    <div class="control-field">
+      <label class="control-label" for="quantSelect">Weight quantization</label>
+      <select class="select-input" id="quantSelect">
+        {pricing.quantizations.map((q) => (
+          <option value={q.id}>{q.label}</option>
+        ))}
+      </select>
+    </div>
+
+    <div class="control-field">
+      <div class="control-row">
+        <label class="control-label" for="contextNum">Context length (tokens)</label>
+        <input class="num-input" id="contextNum" type="number" min="2048" max="131072" step="2048" value="32768" />
+      </div>
+      <input class="range-input" id="contextRange" type="range" min="2048" max="131072" step="2048" value="32768" aria-label="Context length slider" />
+    </div>
+
+    <div class="control-field">
+      <div class="control-row">
+        <label class="control-label" for="seqsNum">Concurrent sequences</label>
+        <input class="num-input" id="seqsNum" type="number" min="1" max="64" step="1" value="8" />
+      </div>
+      <input class="range-input" id="seqsRange" type="range" min="1" max="64" step="1" value="8" aria-label="Concurrent sequences slider" />
+    </div>
+
+    <div class="control-field">
+      <label class="control-label" for="kvPrecSelect">KV-Cache precision</label>
+      <select class="select-input" id="kvPrecSelect">
+        {pricing.kvPrecisions.map((k) => (
+          <option value={k.id}>{k.label}</option>
+        ))}
+      </select>
+    </div>
+
+    <hr class="controls-divider" />
+
+    <div class="control-field">
+      <div class="control-row">
+        <label class="control-label" for="layersNum">Layers / KV Heads</label>
+        <div style="display:flex;gap:6px;">
+          <input class="num-input" style="width:68px;" id="layersNum" type="number" min="12" max="160" step="1" value="64" aria-label="Transformer layers" />
+          <input class="num-input" style="width:56px;" id="kvHeadsNum" type="number" min="1" max="64" step="1" value="8" aria-label="KV attention heads" />
+        </div>
+      </div>
+      <span class="control-hint">Override GQA geometry for custom architectures</span>
+    </div>
+  </Fragment>
+
+  <Fragment slot="results">
+    <div class="kpi-strip">
+      <div class="kpi-cell">
+        <p class="kpi-label">Total VRAM required</p>
+        <p class="kpi-value accent" id="kpiTotalVram">0 GB</p>
+        <p class="kpi-sub" id="kpiVramSplit">Weights + KV + Overhead</p>
+      </div>
+      <div class="kpi-cell">
+        <p class="kpi-label">KV-Cache footprint</p>
+        <p class="kpi-value" id="kpiKvCache">0 GB</p>
+        <p class="kpi-sub" id="kpiKvPerTok">0 KB / token</p>
+      </div>
+      <div class="kpi-cell">
+        <p class="kpi-label">Smallest fitting hardware</p>
+        <p class="kpi-value" id="kpiRecHw">—</p>
+        <p class="kpi-sub" id="kpiRecSpeed">~0 tok/s decode</p>
+      </div>
+    </div>
+
+    <div class="results-actions">
+      <span class="control-hint">VRAM figures reported in GiB (1024^3 bytes) matching nvidia-smi.</span>
+      <div class="action-buttons">
+        <button type="button" class="btn-secondary" id="copyUrlBtn">Copy scenario URL</button>
+        <button type="button" class="btn-primary" id="exportCsvBtn">Export CSV</button>
+      </div>
+    </div>
+
+    <div class="chart-block">
+      <h2 class="block-heading">VRAM composition vs hardware capacity (GiB)</h2>
+      <div class="chart-stage" id="vramBarStage"></div>
+    </div>
+
+    <div class="table-wrap">
+      <table class="data-table">
+        <thead>
+          <tr>
+            <th>Hardware profile</th>
+            <th>Class</th>
+            <th class="num">Usable VRAM</th>
+            <th class="num">Utilization</th>
+            <th class="num">Est. decode</th>
+            <th class="num">Fit status</th>
+          </tr>
+        </thead>
+        <tbody id="hwTableBody"></tbody>
+      </table>
+    </div>
+  </Fragment>
+
+  <Fragment slot="formulas">
+    <div class="formula-grid">
+      <div>
+        <h3>Weight &amp; KV-Cache memory equations</h3>
+        <div class="formula-box">
+          Weights_GiB = (Params * 10^9 * BytesPerParam) / 1024^3<br />
+          KV_GiB = (2 * L * H_kv * D_head * B_kv * Ctx * B_seq) / 1024^3<br />
+          Total_GiB = Weights_GiB + KV_GiB + (0.8 + 0.06 * Weights_GiB + 0.04 * B_seq)
+        </div>
+        <p>
+          Where <code>L</code> is layer count, <code>H_kv</code> is Grouped-Query Attention KV head count, <code>D_head</code> is head dimension (128), <code>B_kv</code> is KV byte width, and <code>B_seq</code> is concurrent sequences.
+        </p>
+      </div>
+      <div>
+        <h3>Memory-bandwidth decode throughput</h3>
+        <div class="formula-box">
+          TokPerSec ≈ (0.72 * MemBandwidth_GBs) / (ActiveWeights_GiB + 0.25 * KV_per_seq)
+        </div>
+        <p>
+          Real-world vLLM and llama.cpp kernels sustain ~65%–78% of theoretical HBM/unified memory bandwidth during decode. Multi-GPU tensor parallelism scales bandwidth with an 0.82 interconnect efficiency factor.
+        </p>
+      </div>
+    </div>
+  </Fragment>
+</SimulatorLayout>
+
+<script>
+  import pricing from '../../data/pricing-2026.json';
+  import { calculateLlmVram, LLM_VRAM_PRESETS, type LlmVramInput } from '../../lib/calculators/llm-vram';
+  import { formatNumber, downloadCsv } from '../../lib/format';
+  import { readStateFromUrl, writeStateToUrl, copyCurrentUrl, type ParamSpec } from '../../lib/url-state';
+  import { renderStackedBarChart, CHART_COLORS } from '../../lib/svg-charts';
+
+  const SPEC: ParamSpec = {
+    modelId: 'string',
+    paramsB: 'number',
+    activeParamsB: 'number',
+    layers: 'number',
+    kvHeads: 'number',
+    headDim: 'number',
+    quantizationId: 'string',
+    contextLength: 'number',
+    concurrentSeqs: 'number',
+    kvPrecisionId: 'string',
+  };
+
+  let state: LlmVramInput = readStateFromUrl({ ...LLM_VRAM_PRESETS.scaleup }, SPEC);
+
+  const modelSelect = document.getElementById('modelSelect') as HTMLSelectElement;
+  const quantSelect = document.getElementById('quantSelect') as HTMLSelectElement;
+  const kvPrecSelect = document.getElementById('kvPrecSelect') as HTMLSelectElement;
+  const paramsNum = document.getElementById('paramsNum') as HTMLInputElement;
+  const paramsRange = document.getElementById('paramsRange') as HTMLInputElement;
+  const contextNum = document.getElementById('contextNum') as HTMLInputElement;
+  const contextRange = document.getElementById('contextRange') as HTMLInputElement;
+  const seqsNum = document.getElementById('seqsNum') as HTMLInputElement;
+  const seqsRange = document.getElementById('seqsRange') as HTMLInputElement;
+  const layersNum = document.getElementById('layersNum') as HTMLInputElement;
+  const kvHeadsNum = document.getElementById('kvHeadsNum') as HTMLInputElement;
+  const presetBtns = Array.from(document.querySelectorAll<HTMLButtonElement>('.preset-btn'));
+
+  function syncInputsFromState() {
+    modelSelect.value = state.modelId;
+    quantSelect.value = state.quantizationId;
+    kvPrecSelect.value = state.kvPrecisionId;
+    paramsNum.value = String(state.paramsB);
+    paramsRange.value = String(Math.min(200, state.paramsB));
+    contextNum.value = String(state.contextLength);
+    contextRange.value = String(state.contextLength);
+    seqsNum.value = String(state.concurrentSeqs);
+    seqsRange.value = String(state.concurrentSeqs);
+    layersNum.value = String(state.layers);
+    kvHeadsNum.value = String(state.kvHeads);
+  }
+
+  let lastResult = calculateLlmVram(state);
+
+  function render() {
+    lastResult = calculateLlmVram(state);
+    writeStateToUrl(state, SPEC);
+
+    document.getElementById('kpiTotalVram')!.textContent = `${lastResult.totalVramGB.toFixed(1)} GiB`;
+    document.getElementById('kpiVramSplit')!.textContent =
+      `${lastResult.weightsGB.toFixed(1)}W + ${lastResult.kvCacheGB.toFixed(1)}KV + ${lastResult.overheadGB.toFixed(1)}OH`;
+
+    document.getElementById('kpiKvCache')!.textContent = `${lastResult.kvCacheGB.toFixed(2)} GiB`;
+    document.getElementById('kpiKvPerTok')!.textContent = `${lastResult.kvPerTokenKB.toFixed(0)} KB / token`;
+
+    document.getElementById('kpiRecHw')!.textContent = lastResult.recommendedHardware.name.replace('NVIDIA ', '');
+    document.getElementById('kpiRecSpeed')!.textContent =
+      `~${Math.round(lastResult.recommendedHardware.estimatedTokPerSec)} tok/s decode`;
+
+    const refBars = [
+      {
+        label: 'Required VRAM',
+        totalDisplay: `${lastResult.totalVramGB.toFixed(1)} GiB`,
+        segments: [
+          { label: 'Model weights', value: lastResult.weightsGB, color: CHART_COLORS[0] },
+          { label: 'KV-Cache', value: lastResult.kvCacheGB, color: CHART_COLORS[1] },
+          { label: 'CUDA overhead', value: lastResult.overheadGB, color: CHART_COLORS[2] },
+        ],
+      },
+      {
+        label: 'RTX 4090 (24 GiB)',
+        totalDisplay: '24.0 GiB',
+        segments: [{ label: 'Capacity', value: 24, color: '#CBD5E1' }],
+      },
+      {
+        label: 'L40S (48 GiB)',
+        totalDisplay: '48.0 GiB',
+        segments: [{ label: 'Capacity', value: 48, color: '#CBD5E1' }],
+      },
+      {
+        label: 'H100 SXM (80 GiB)',
+        totalDisplay: '80.0 GiB',
+        segments: [{ label: 'Capacity', value: 80, color: '#CBD5E1' }],
+      },
+    ];
+
+    document.getElementById('vramBarStage')!.innerHTML = renderStackedBarChart(refBars, {
+      title: 'Required VRAM Breakdown vs Reference GPUs',
+      legend: [
+        { label: 'Weights', color: CHART_COLORS[0] },
+        { label: 'KV-Cache', color: CHART_COLORS[1] },
+        { label: 'Overhead', color: CHART_COLORS[2] },
+        { label: 'GPU capacity', color: '#CBD5E1' },
+      ],
+    });
+
+    const tbody = document.getElementById('hwTableBody')!;
+    tbody.innerHTML = lastResult.hardwareMatches
+      .map((hw) => {
+        const statusClass =
+          hw.fitStatus === 'Fits' ? 'status-ok' : hw.fitStatus === 'Tight' ? 'status-warn' : 'status-danger';
+        const statusText = hw.fitStatus === 'Multi-GPU' ? `${hw.gpusRequired}x GPUs` : hw.fitStatus;
+        const isRec = hw.id === lastResult.recommendedHardware.id;
+        return `<tr class="${isRec ? 'row-highlight' : ''}">
+          <td><strong>${hw.name}</strong></td>
+          <td>${hw.category}</td>
+          <td class="num">${hw.vramGB} GiB</td>
+          <td class="num">${Math.min(999, hw.utilizationPct).toFixed(0)}%</td>
+          <td class="num">${formatNumber(hw.estimatedTokPerSec, 0)} tok/s</td>
+          <td class="num ${statusClass}">${statusText}</td>
+        </tr>`;
+      })
+      .join('');
+  }
+
+  modelSelect.addEventListener('change', () => {
+    const m = pricing.vramModels.find((x) => x.id === modelSelect.value);
+    if (m) {
+      state.modelId = m.id;
+      state.paramsB = m.paramsB;
+      state.activeParamsB = m.activeParamsB;
+      state.layers = m.layers;
+      state.kvHeads = m.kvHeads;
+      state.headDim = m.headDim;
+      presetBtns.forEach((b) => b.setAttribute('aria-pressed', 'false'));
+      syncInputsFromState();
+      render();
+    }
+  });
+
+  quantSelect.addEventListener('change', () => {
+    state.quantizationId = quantSelect.value;
+    render();
+  });
+
+  kvPrecSelect.addEventListener('change', () => {
+    state.kvPrecisionId = kvPrecSelect.value;
+    render();
+  });
+
+  const bindPair = (
+    numEl: HTMLInputElement,
+    rangeEl: HTMLInputElement,
+    setter: (v: number) => void
+  ) => {
+    const fn = (val: string) => {
+      const n = Number(val);
+      if (!Number.isFinite(n)) return;
+      setter(n);
+      numEl.value = val;
+      rangeEl.value = val;
+      presetBtns.forEach((b) => b.setAttribute('aria-pressed', 'false'));
+      render();
+    };
+    numEl.addEventListener('input', () => fn(numEl.value));
+    rangeEl.addEventListener('input', () => fn(rangeEl.value));
+  };
+
+  bindPair(paramsNum, paramsRange, (v) => {
+    state.paramsB = v;
+    state.activeParamsB = v;
+  });
+  bindPair(contextNum, contextRange, (v) => {
+    state.contextLength = v;
+  });
+  bindPair(seqsNum, seqsRange, (v) => {
+    state.concurrentSeqs = v;
+  });
+
+  layersNum.addEventListener('input', () => {
+    const n = Number(layersNum.value);
+    if (Number.isFinite(n) && n > 0) {
+      state.layers = n;
+      render();
+    }
+  });
+
+  kvHeadsNum.addEventListener('input', () => {
+    const n = Number(kvHeadsNum.value);
+    if (Number.isFinite(n) && n > 0) {
+      state.kvHeads = n;
+      render();
+    }
+  });
+
+  presetBtns.forEach((btn) => {
+    btn.addEventListener('click', () => {
+      const key = btn.dataset.preset!;
+      if (LLM_VRAM_PRESETS[key]) {
+        state = { ...LLM_VRAM_PRESETS[key] };
+        presetBtns.forEach((b) => b.setAttribute('aria-pressed', b === btn ? 'true' : 'false'));
+        syncInputsFromState();
+        render();
+      }
+    });
+  });
+
+  document.getElementById('copyUrlBtn')!.addEventListener('click', (e) => {
+    copyCurrentUrl(e.currentTarget as HTMLButtonElement);
+  });
+
+  document.getElementById('exportCsvBtn')!.addEventListener('click', () => {
+    downloadCsv(
+      'tokenscale-vram-sizing.csv',
+      ['Hardware', 'Category', 'Usable VRAM GiB', 'Required VRAM GiB', 'Utilization %', 'Est Decode tok/s', 'Fit Status', 'GPUs Required'],
+      lastResult.hardwareMatches.map((h) => [
+        h.name,
+        h.category,
+        h.vramGB,
+        lastResult.totalVramGB.toFixed(2),
+        h.utilizationPct.toFixed(1),
+        Math.round(h.estimatedTokPerSec),
+        h.fitStatus,
+        h.gpusRequired,
+      ])
+    );
+  });
+
+  syncInputsFromState();
+  render();
+</script>

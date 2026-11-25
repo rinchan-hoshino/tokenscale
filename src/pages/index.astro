@@ -1,0 +1,200 @@
+---
+import BaseLayout from '../layouts/BaseLayout.astro';
+import { SIMULATORS } from '../data/simulators';
+import pricing from '../data/pricing-2026.json';
+
+const jsonLd = [
+  {
+    '@context': 'https://schema.org',
+    '@type': 'WebApplication',
+    name: 'TokenScale AI & Cloud FinOps Simulators',
+    url: 'https://tokenscale.dev/',
+    applicationCategory: 'DeveloperApplication',
+    operatingSystem: 'Any',
+    description:
+      'Six multivariable interactive AI and cloud infrastructure cost simulators for LLM APIs, GPU VRAM sizing, GPU vs API break-even, cloud egress, RAG vector databases, and realtime Voice AI.',
+    offers: {
+      '@type': 'Offer',
+      price: '0',
+      priceCurrency: 'USD',
+    },
+  },
+];
+---
+<BaseLayout
+  title="TokenScale — Interactive AI & Cloud Infrastructure Cost Simulators"
+  description="Six precision multivariable calculators for LLM API prompt caching, local GPU VRAM sizing, self-hosted GPU break-even, cloud egress cliffs, RAG vector DBs, and realtime Voice AI."
+  canonicalPath="/"
+  jsonLd={jsonLd}
+>
+  <section class="page-head">
+    <div class="container">
+      <h1>Precision AI &amp; Cloud Infrastructure Cost Simulators</h1>
+      <p class="page-subtitle">
+        Model LLM API caching, GPU VRAM sizing, self-hosted break-even curves, cloud egress cliffs, RAG vector RAM, and realtime Voice AI pipelines—100% client-side with shareable scenario URLs.
+      </p>
+    </div>
+  </section>
+
+  <section class="workbench-section">
+    <div class="container">
+      <div class="workbench-grid" aria-label="Quick LLM API Cost Simulator">
+        <div class="controls-pane">
+          <div class="control-row">
+            <strong style="font-size:var(--text-body);color:var(--ink-primary);">Quick bench: LLM API spend</strong>
+            <a href="/llm-api-cost-calculator/" style="font-size:var(--text-sm);font-weight:600;">Full simulator &rarr;</a>
+          </div>
+
+          <div class="control-field">
+            <div class="control-row">
+              <label class="control-label" for="homeReqNum">Daily requests</label>
+              <input class="num-input" id="homeReqNum" type="number" min="500" max="500000" step="500" value="45000" />
+            </div>
+            <input class="range-input" id="homeReqRange" type="range" min="500" max="500000" step="500" value="45000" aria-label="Daily requests slider" />
+          </div>
+
+          <div class="control-field">
+            <div class="control-row">
+              <label class="control-label" for="homeCacheNum">Prompt cache hit rate (%)</label>
+              <input class="num-input" id="homeCacheNum" type="number" min="0" max="95" step="5" value="75" />
+            </div>
+            <input class="range-input" id="homeCacheRange" type="range" min="0" max="95" step="5" value="75" aria-label="Prompt cache hit rate slider" />
+          </div>
+
+          <div class="toggle-row">
+            <label class="control-label" for="homeBatchToggle">Batch API 50% discount</label>
+            <input class="toggle-checkbox" id="homeBatchToggle" type="checkbox" />
+          </div>
+
+          <a href="/llm-api-cost-calculator/" class="btn-primary" style="margin-top:auto;">Open full 10-model simulator</a>
+        </div>
+
+        <div class="results-pane">
+          <div class="kpi-strip">
+            <div class="kpi-cell">
+              <p class="kpi-label">Lowest monthly bill</p>
+              <p class="kpi-value accent" id="homeKpiCheapest">$0</p>
+              <p class="kpi-sub" id="homeKpiCheapestName">—</p>
+            </div>
+            <div class="kpi-cell">
+              <p class="kpi-label">GPT-4.1 monthly</p>
+              <p class="kpi-value" id="homeKpiGpt">$0</p>
+              <p class="kpi-sub" id="homeKpiGptSub">3.2K sys + 1.2K in / 700 out</p>
+            </div>
+            <div class="kpi-cell">
+              <p class="kpi-label">Claude 3.7 Sonnet</p>
+              <p class="kpi-value" id="homeKpiClaude">$0</p>
+              <p class="kpi-sub" id="homeKpiClaudeSave">Cache saves $0/mo</p>
+            </div>
+          </div>
+
+          <div class="chart-block">
+            <div class="chart-stage" id="homeBarStage"></div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section class="doc-section" style="padding-top:12px;border-top:0;">
+    <div class="container">
+      <h2>All six multivariable FinOps simulators</h2>
+      <div class="matrix-grid">
+        {SIMULATORS.map((sim) => (
+          <a href={sim.href} class="matrix-cell">
+            <div>
+              <h3>{sim.title}</h3>
+              <p>{sim.shortDesc}</p>
+            </div>
+            <span class="matrix-link-text">{sim.ctaLabel} &rarr;</span>
+          </a>
+        ))}
+      </div>
+    </div>
+  </section>
+
+  <section class="doc-section">
+    <div class="container">
+      <h2>Deterministic formulas, transparent pricing</h2>
+      <div class="formula-grid">
+        <div>
+          <h3>Single-source pricing catalog</h3>
+          <p>
+            Every rate across all six simulators reads from a single versioned JSON dataset (v{pricing.metadata.version}, updated {pricing.metadata.lastUpdated}). No hidden affiliate markups, no backend calls, and zero external font or analytics requests.
+          </p>
+        </div>
+        <div>
+          <h3>Shareable engineering scenarios</h3>
+          <p>
+            Each simulator encodes its full parameter vector into the page URL and exports structured CSV tables so platform teams can attach reproducible cost models directly to RFCs and architecture reviews.
+          </p>
+        </div>
+      </div>
+    </div>
+  </section>
+</BaseLayout>
+
+<script>
+  import { calculateLlmApiCost, LLM_API_PRESETS } from '../lib/calculators/llm-api';
+  import { formatUsd, formatCompactUsd } from '../lib/format';
+  import { renderHorizontalBarChart, CHART_COLORS } from '../lib/svg-charts';
+
+  const state = { ...LLM_API_PRESETS.scaleup };
+
+  const reqNum = document.getElementById('homeReqNum') as HTMLInputElement;
+  const reqRange = document.getElementById('homeReqRange') as HTMLInputElement;
+  const cacheNum = document.getElementById('homeCacheNum') as HTMLInputElement;
+  const cacheRange = document.getElementById('homeCacheRange') as HTMLInputElement;
+  const batchToggle = document.getElementById('homeBatchToggle') as HTMLInputElement;
+
+  function render() {
+    const res = calculateLlmApiCost(state);
+    const gpt = res.models.find((m) => m.id === 'gpt-4.1') ?? res.models[0];
+    const claude = res.models.find((m) => m.id === 'claude-3.7-sonnet') ?? res.flagshipModel;
+
+    document.getElementById('homeKpiCheapest')!.textContent = formatUsd(res.cheapestModel.monthlyTotal);
+    document.getElementById('homeKpiCheapestName')!.textContent = `${res.cheapestModel.name} (${res.cheapestModel.provider})`;
+    document.getElementById('homeKpiGpt')!.textContent = formatUsd(gpt.monthlyTotal);
+    document.getElementById('homeKpiClaude')!.textContent = formatUsd(claude.monthlyTotal);
+    document.getElementById('homeKpiClaudeSave')!.textContent = `Cache saves ${formatUsd(claude.cacheSavingsUsd)}/mo`;
+
+    const featuredIds = ['gemini-2.5-flash', 'deepseek-v3', 'gpt-4.1-mini', 'gpt-4.1', 'gemini-2.5-pro', 'claude-3.7-sonnet'];
+    const featured = featuredIds
+      .map((id) => res.models.find((m) => m.id === id))
+      .filter((m): m is NonNullable<typeof m> => Boolean(m))
+      .sort((a, b) => a.monthlyTotal - b.monthlyTotal);
+
+    document.getElementById('homeBarStage')!.innerHTML = renderHorizontalBarChart(
+      featured.map((m, idx) => ({
+        label: m.name,
+        value: m.monthlyTotal,
+        displayValue: formatCompactUsd(m.monthlyTotal),
+        color: idx === 0 ? CHART_COLORS[1] : m.id === 'gpt-4.1' ? CHART_COLORS[0] : '#475569',
+        highlight: idx === 0 || m.id === 'gpt-4.1',
+      })),
+      { title: 'Featured LLM Monthly Cost Comparison' }
+    );
+  }
+
+  const bind = (numEl: HTMLInputElement, rangeEl: HTMLInputElement, fn: (v: number) => void) => {
+    const handler = (raw: string) => {
+      const n = Number(raw);
+      if (!Number.isFinite(n)) return;
+      fn(n);
+      numEl.value = raw;
+      rangeEl.value = raw;
+      render();
+    };
+    numEl.addEventListener('input', () => handler(numEl.value));
+    rangeEl.addEventListener('input', () => handler(rangeEl.value));
+  };
+
+  bind(reqNum, reqRange, (v) => (state.dailyRequests = v));
+  bind(cacheNum, cacheRange, (v) => (state.cacheHitRate = v / 100));
+  batchToggle.addEventListener('change', () => {
+    state.useBatchApi = batchToggle.checked;
+    render();
+  });
+
+  render();
+</script>
