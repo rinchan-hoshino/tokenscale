@@ -1,7 +1,8 @@
 import { defineConfig } from 'astro/config';
 
 export default defineConfig({
-  site: 'https://tokenscale.dev',
+  site: 'https://rinchan-hoshino.github.io',
+  base: '/tokenscale',
   output: 'static',
   trailingSlash: 'always',
   compressHTML: true,

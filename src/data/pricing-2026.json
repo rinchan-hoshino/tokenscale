@@ -31,20 +31,20 @@
       "isReasoning": false
     },
     {
-      "id": "o3-mini",
-      "name": "o3-mini",
+      "id": "openai-o3",
+      "name": "OpenAI o3",
       "provider": "OpenAI",
       "tier": "Reasoning",
-      "inputPer1M": 1.10,
-      "cachedInputPer1M": 0.55,
-      "outputPer1M": 4.40,
+      "inputPer1M": 2.00,
+      "cachedInputPer1M": 0.50,
+      "outputPer1M": 8.00,
       "supportsBatch": true,
       "batchDiscount": 0.50,
       "isReasoning": true
     },
     {
-      "id": "claude-3.7-sonnet",
-      "name": "Claude 3.7 Sonnet",
+      "id": "claude-sonnet-4.5",
+      "name": "Claude Sonnet 4.5",
       "provider": "Anthropic",
       "tier": "Flagship",
       "inputPer1M": 3.00,
@@ -55,13 +55,13 @@
       "isReasoning": true
     },
     {
-      "id": "claude-3.5-haiku",
-      "name": "Claude 3.5 Haiku",
+      "id": "claude-haiku-4.5",
+      "name": "Claude Haiku 4.5",
       "provider": "Anthropic",
       "tier": "Efficient",
-      "inputPer1M": 0.80,
-      "cachedInputPer1M": 0.08,
-      "outputPer1M": 4.00,
+      "inputPer1M": 1.00,
+      "cachedInputPer1M": 0.10,
+      "outputPer1M": 5.00,
       "supportsBatch": true,
       "batchDiscount": 0.50,
       "isReasoning": false

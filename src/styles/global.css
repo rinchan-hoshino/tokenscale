@@ -129,6 +129,30 @@ summary:focus-visible {
   font-weight: 600;
 }
 
+.mobile-nav-wrap {
+  display: none;
+}
+
+.mobile-nav-select {
+  appearance: auto;
+  padding: 6px 10px;
+  font-family: inherit;
+  font-size: var(--text-body);
+  font-weight: 600;
+  color: var(--ink-primary);
+  background-color: var(--bg-muted);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-sm);
+  max-width: 175px;
+  cursor: pointer;
+  transition: border-color var(--dur-fast) var(--ease-out), background-color var(--dur-fast) var(--ease-out);
+}
+
+.mobile-nav-select:focus {
+  background-color: var(--bg-surface);
+  border-color: var(--accent);
+}
+
 /* Page Head — immediate opening format fit, zero banner fluff */
 .page-head {
   padding: 22px 0 18px;
@@ -639,6 +663,17 @@ summary:focus-visible {
 }
 
 /* Responsive Breakpoints */
+@media (max-width: 900px) {
+  .site-nav {
+    display: none;
+  }
+
+  .mobile-nav-wrap {
+    display: block;
+    flex-shrink: 0;
+  }
+}
+
 @media (max-width: 960px) {
   .workbench-grid {
     grid-template-columns: 1fr;

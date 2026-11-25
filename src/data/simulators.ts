@@ -1,3 +1,11 @@
+export const SITE_ORIGIN = 'https://rinchan-hoshino.github.io';
+export const BASE_PATH = '/tokenscale';
+
+export function withBase(path: string): string {
+  const normalized = path.startsWith('/') ? path : `/${path}`;
+  return `${BASE_PATH}${normalized}`;
+}
+
 export interface SimulatorMeta {
   id: string;
   href: string;
@@ -10,7 +18,7 @@ export interface SimulatorMeta {
 export const SIMULATORS: SimulatorMeta[] = [
   {
     id: 'llm-api',
-    href: '/llm-api-cost-calculator/',
+    href: withBase('/llm-api-cost-calculator/'),
     navLabel: 'LLM API',
     title: 'LLM API & Prompt Caching Cost Simulator',
     shortDesc:
@@ -19,7 +27,7 @@ export const SIMULATORS: SimulatorMeta[] = [
   },
   {
     id: 'llm-vram',
-    href: '/llm-vram-calculator/',
+    href: withBase('/llm-vram-calculator/'),
     navLabel: 'GPU VRAM',
     title: 'Local LLM GPU VRAM & KV-Cache Sizing',
     shortDesc:
@@ -28,7 +36,7 @@ export const SIMULATORS: SimulatorMeta[] = [
   },
   {
     id: 'gpu-breakeven',
-    href: '/gpu-vs-api-breakeven/',
+    href: withBase('/gpu-vs-api-breakeven/'),
     navLabel: 'GPU vs API',
     title: 'Self-Hosted GPU vs Managed API Break-Even',
     shortDesc:
@@ -37,7 +45,7 @@ export const SIMULATORS: SimulatorMeta[] = [
   },
   {
     id: 'cloud-egress',
-    href: '/cloud-egress-calculator/',
+    href: withBase('/cloud-egress-calculator/'),
     navLabel: 'Cloud Egress',
     title: 'Cloud Object Storage & Egress Comparator',
     shortDesc:
@@ -46,7 +54,7 @@ export const SIMULATORS: SimulatorMeta[] = [
   },
   {
     id: 'rag-vector',
-    href: '/rag-vector-cost-calculator/',
+    href: withBase('/rag-vector-cost-calculator/'),
     navLabel: 'RAG Vector',
     title: 'RAG Vector Database & Embedding Simulator',
     shortDesc:
@@ -55,7 +63,7 @@ export const SIMULATORS: SimulatorMeta[] = [
   },
   {
     id: 'voice-ai',
-    href: '/voice-ai-cost-calculator/',
+    href: withBase('/voice-ai-cost-calculator/'),
     navLabel: 'Voice AI',
     title: 'Realtime Voice AI Pipeline Cost Simulator',
     shortDesc:

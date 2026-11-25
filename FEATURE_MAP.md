@@ -1,13 +1,13 @@
 # TokenScale — Feature Map & Architecture
 
-TokenScale is a 100% static, client-side AI & Cloud Infrastructure FinOps simulator suite built with Astro 5 and vanilla TypeScript. Zero backend, zero database, zero external CDN or font requests, ready for zero-cost static deployment on Cloudflare Pages.
+TokenScale is a 100% static, client-side AI & Cloud Infrastructure FinOps simulator suite built with Astro 5 and vanilla TypeScript. Zero backend, zero database, zero external CDN or font requests, deployed to GitHub Pages under `/tokenscale/`.
 
-## Routes (8 Pages + SEO Assets)
+## Routes (8 Pages + SEO Assets under `/tokenscale/`)
 
 | Route | Title | Engine | Charts & Interactive Features |
 | :--- | :--- | :--- | :--- |
-| `/` | Home & Quick Bench | `src/lib/calculators/llm-api.ts` | Immediate interactive LLM API quick bench + balanced 2×3 6-simulator matrix |
-| `/llm-api-cost-calculator/` | LLM API & Prompt Caching Cost Simulator | `src/lib/calculators/llm-api.ts` | 10 models (OpenAI, Anthropic, Gemini, DeepSeek, Groq), prompt cache hit rate 0–95%, reasoning multiplier, Batch API 50% toggle, horizontal comparison bar + cache sensitivity SVG curve |
+| `/tokenscale/` | Home & Quick Bench | `src/lib/calculators/llm-api.ts` | Immediate interactive LLM API quick bench + balanced 2×3 6-simulator matrix + mobile `<select>` nav switcher |
+| `/tokenscale/llm-api-cost-calculator/` | LLM API & Prompt Caching Cost Simulator | `src/lib/calculators/llm-api.ts` | 10 models (GPT-4.1, GPT-4.1 mini, OpenAI o3, Claude Sonnet 4.5, Claude Haiku 4.5, Gemini 2.5 Pro/Flash, DeepSeek-V3/R1, Groq Llama 3.3 70B), prompt cache hit rate 0–95%, reasoning multiplier, Batch API 50% toggle, horizontal comparison bar + cache sensitivity SVG curve |
 | `/llm-vram-calculator/` | Local LLM GPU VRAM, KV-Cache & Quantization Sizing | `src/lib/calculators/llm-vram.ts` | 7B–141B Dense & MoE presets + custom GQA geometry, FP16/BF16/FP8/Q8_0/Q6_K/Q4_K_M, 2K–128K context, concurrency, FP16/FP8/Q8 KV cache, stacked VRAM SVG bar + 9 GPU/Apple Silicon fit & tok/s table |
 | `/gpu-vs-api-breakeven/` | Self-Hosted GPU vs Managed LLM API Break-Even | `src/lib/calculators/gpu-vs-api.ts` | Daily token volume, input/output split, GPU utilization %, H100/L40S/A100/RTX 4090 hourly presets, exact crossover annotation on dual-series SVG curve |
 | `/cloud-egress-calculator/` | Cloud Object Storage & Egress Cost Comparator | `src/lib/calculators/cloud-egress.ts` | Cloudflare R2 ($0 egress), Backblaze B2 (3× free egress), AWS S3 + CloudFront, GCS; multi-line SVG egress cliff chart |

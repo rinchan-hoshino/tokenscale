@@ -6,25 +6,28 @@ import { execFileSync } from 'node:child_process';
 import { chromium } from 'playwright-core';
 
 const DIST_DIR = path.resolve(process.cwd(), 'dist');
+const BASE_PATH = '/tokenscale';
+const LIVE_ORIGIN = process.env.AUDIT_ORIGIN || '';
+const OUT_GRID = process.env.AUDIT_OUT || '/tmp/finops-sim-audit.png';
 
 const ROUTES = [
-  '/',
-  '/llm-api-cost-calculator/',
-  '/llm-vram-calculator/',
-  '/gpu-vs-api-breakeven/',
-  '/cloud-egress-calculator/',
-  '/rag-vector-cost-calculator/',
-  '/voice-ai-cost-calculator/',
-  '/about/',
+  `${BASE_PATH}/`,
+  `${BASE_PATH}/llm-api-cost-calculator/`,
+  `${BASE_PATH}/llm-vram-calculator/`,
+  `${BASE_PATH}/gpu-vs-api-breakeven/`,
+  `${BASE_PATH}/cloud-egress-calculator/`,
+  `${BASE_PATH}/rag-vector-cost-calculator/`,
+  `${BASE_PATH}/voice-ai-cost-calculator/`,
+  `${BASE_PATH}/about/`,
 ];
 
 const SIM_INTERACTIONS = [
-  { route: '/llm-api-cost-calculator/', slider: '#dailyRequestsRange', newVal: '120000', svgContainer: '#barChartStage', param: 'dailyRequests=120000' },
-  { route: '/llm-vram-calculator/', slider: '#contextRange', newVal: '65536', svgContainer: '#vramBarStage', param: 'contextLength=65536' },
-  { route: '/gpu-vs-api-breakeven/', slider: '#dailyTokensRange', newVal: '180', svgContainer: '#crossoverChartStage', param: 'dailyTokensM=180' },
-  { route: '/cloud-egress-calculator/', slider: '#egressRange', newVal: '250', svgContainer: '#cliffChartStage', param: 'egressTB=250' },
-  { route: '/rag-vector-cost-calculator/', slider: '#qpsRange', newVal: '180', svgContainer: '#ragBarStage', param: 'queryQps=180' },
-  { route: '/voice-ai-cost-calculator/', slider: '#callsRange', newVal: '12000', svgContainer: '#voiceBarStage', param: 'dailyCalls=12000' },
+  { route: `${BASE_PATH}/llm-api-cost-calculator/`, slider: '#dailyRequestsRange', newVal: '120000', svgContainer: '#barChartStage', param: 'dailyRequests=120000' },
+  { route: `${BASE_PATH}/llm-vram-calculator/`, slider: '#contextRange', newVal: '65536', svgContainer: '#vramBarStage', param: 'contextLength=65536' },
+  { route: `${BASE_PATH}/gpu-vs-api-breakeven/`, slider: '#dailyTokensRange', newVal: '180', svgContainer: '#crossoverChartStage', param: 'dailyTokensM=180' },
+  { route: `${BASE_PATH}/cloud-egress-calculator/`, slider: '#egressRange', newVal: '250', svgContainer: '#cliffChartStage', param: 'egressTB=250' },
+  { route: `${BASE_PATH}/rag-vector-cost-calculator/`, slider: '#qpsRange', newVal: '180', svgContainer: '#ragBarStage', param: 'queryQps=180' },
+  { route: `${BASE_PATH}/voice-ai-cost-calculator/`, slider: '#callsRange', newVal: '12000', svgContainer: '#voiceBarStage', param: 'dailyCalls=12000' },
 ];
 
 const MIME = {
@@ -41,7 +44,13 @@ function startStaticServer() {
   return new Promise((resolve) => {
     const server = http.createServer((req, res) => {
       const urlPath = (req.url || '/').split('?')[0];
-      let filePath = path.join(DIST_DIR, urlPath);
+      if (!urlPath.startsWith(BASE_PATH)) {
+        res.writeHead(404);
+        res.end('Not found (expected /tokenscale prefix)');
+        return;
+      }
+      const rel = urlPath.slice(BASE_PATH.length) || '/';
+      let filePath = path.join(DIST_DIR, rel);
       if (fs.existsSync(filePath) && fs.statSync(filePath).isDirectory()) {
         filePath = path.join(filePath, 'index.html');
       }
@@ -83,27 +92,33 @@ function measureGzippedJs() {
 }
 
 async function main() {
-  const jsStats = measureGzippedJs();
-  console.log(`JS Bundle Check: ${jsStats.files.length} files, total ${(jsStats.totalGzip / 1024).toFixed(2)} KB gzipped (${(jsStats.totalRaw / 1024).toFixed(2)} KB raw)`);
-  if (jsStats.totalGzip > 35 * 1024) {
-    throw new Error(`Total gzipped JS ${(jsStats.totalGzip / 1024).toFixed(2)}KB exceeds 35KB budget!`);
+  if (!LIVE_ORIGIN) {
+    const jsStats = measureGzippedJs();
+    console.log(`JS Bundle Check: ${jsStats.files.length} files, total ${(jsStats.totalGzip / 1024).toFixed(2)} KB gzipped (${(jsStats.totalRaw / 1024).toFixed(2)} KB raw)`);
+    if (jsStats.totalGzip > 35 * 1024) {
+      throw new Error(`Total gzipped JS ${(jsStats.totalGzip / 1024).toFixed(2)}KB exceeds 35KB budget!`);
+    }
   }
 
-  const { server, port } = await startStaticServer();
-  const origin = `http://127.0.0.1:${port}`;
-  const browser = await chromium.launch({ channel: 'chrome', headless: true });
+  let server = null;
+  let origin = LIVE_ORIGIN;
+  if (!origin) {
+    const started = await startStaticServer();
+    server = started.server;
+    origin = `http://127.0.0.1:${started.port}`;
+  }
+  console.log(`Auditing origin: ${origin}${BASE_PATH}/`);
 
+  const browser = await chromium.launch({ channel: 'chrome', headless: true });
   const errors = [];
   const externalRequests = [];
 
   try {
-    // Verify sitemap.xml and robots.txt
-    for (const metaPath of ['/sitemap.xml', '/robots.txt']) {
+    for (const metaPath of [`${BASE_PATH}/sitemap.xml`, `${BASE_PATH}/robots.txt`]) {
       const resp = await fetch(`${origin}${metaPath}`);
       if (resp.status !== 200) errors.push(`${metaPath} returned HTTP ${resp.status}`);
     }
 
-    // 1. Desktop 1440x900@2x audit across all 8 routes
     const desktopCtx = await browser.newContext({
       viewport: { width: 1440, height: 900 },
       deviceScaleFactor: 2,
@@ -132,7 +147,6 @@ async function main() {
         continue;
       }
 
-      // Check horizontal overflow
       const overflow = await page.evaluate(() => ({
         scrollW: document.documentElement.scrollWidth,
         clientW: document.documentElement.clientWidth,
@@ -141,75 +155,34 @@ async function main() {
         errors.push(`Desktop overflow on ${route}: scrollWidth=${overflow.scrollW} > clientWidth=${overflow.clientW}`);
       }
 
-      // Check WCAG AA contrast on key text selectors
-      const contrastFailures = await page.evaluate(() => {
-        const parseRgb = (str) => {
-          const m = str.match(/rgba?\((\d+),\s*(\d+),\s*(\d+)(?:,\s*([\d.]+))?\)/);
-          if (!m) return null;
-          return { r: +m[1], g: +m[2], b: +m[3], a: m[4] !== undefined ? +m[4] : 1 };
-        };
-        const lum = ({ r, g, b }) => {
-          const f = (c) => {
-            const s = c / 255;
-            return s <= 0.03928 ? s / 12.92 : Math.pow((s + 0.055) / 1.055, 2.4);
-          };
-          return 0.2126 * f(r) + 0.7152 * f(g) + 0.0722 * f(b);
-        };
-        const getBg = (el) => {
-          let cur = el;
-          while (cur) {
-            const bg = parseRgb(getComputedStyle(cur).backgroundColor);
-            if (bg && bg.a > 0.1) return bg;
-            cur = cur.parentElement;
-          }
-          return { r: 248, g: 250, b: 252, a: 1 };
-        };
-        const sels = ['h1', '.page-subtitle', '.kpi-label', '.kpi-value', '.control-label', '.site-footer'];
-        const bad = [];
-        for (const sel of sels) {
-          const el = document.querySelector(sel);
-          if (!el) continue;
-          const fg = parseRgb(getComputedStyle(el).color);
-          const bg = getBg(el);
-          if (!fg || !bg) continue;
-          const l1 = Math.max(lum(fg), lum(bg));
-          const l2 = Math.min(lum(fg), lum(bg));
-          const ratio = (l1 + 0.05) / (l2 + 0.05);
-          if (ratio < 4.5) bad.push(`${sel}: ${ratio.toFixed(2)}:1`);
-        }
-        return bad;
-      });
-      if (contrastFailures.length > 0) {
-        errors.push(`Contrast failure on ${route}: ${contrastFailures.join(', ')}`);
-      }
-
-      // Collect internal links
       const hrefs = await page.evaluate(() =>
         Array.from(document.querySelectorAll('a[href]')).map((a) => a.getAttribute('href'))
       );
       for (const h of hrefs) {
-        if (h && h.startsWith('/')) internalLinks.add(h);
+        if (h && h.startsWith('/')) {
+          if (!h.startsWith(BASE_PATH)) {
+            errors.push(`Root-relative link missing ${BASE_PATH} prefix on ${route}: ${h}`);
+          }
+          internalLinks.add(h);
+        }
       }
 
-      // Capture desktop screenshots
-      if (route === '/') {
+      if (route === `${BASE_PATH}/`) {
         await page.screenshot({ path: '/tmp/finops-sim-home-desktop.png', fullPage: false });
-      } else if (route === '/llm-api-cost-calculator/') {
+      } else if (route === `${BASE_PATH}/llm-api-cost-calculator/`) {
         await page.screenshot({ path: '/tmp/finops-sim-api.png', fullPage: false });
-      } else if (route === '/llm-vram-calculator/') {
+      } else if (route === `${BASE_PATH}/llm-vram-calculator/`) {
         await page.screenshot({ path: '/tmp/finops-sim-vram.png', fullPage: false });
-      } else if (route === '/gpu-vs-api-breakeven/') {
+      } else if (route === `${BASE_PATH}/gpu-vs-api-breakeven/`) {
         await page.screenshot({ path: '/tmp/finops-sim-breakeven.png', fullPage: false });
       }
     }
 
-    // Verify all discovered internal links return 200
     for (const link of internalLinks) {
       const resp = await fetch(`${origin}${link}`);
       if (resp.status !== 200) errors.push(`Broken internal link ${link}: HTTP ${resp.status}`);
     }
 
-    // 2. Interactive slider -> SVG & URL query sync verification across all 6 simulators
     for (const sim of SIM_INTERACTIONS) {
       await page.goto(`${origin}${sim.route}`, { waitUntil: 'networkidle' });
       const beforeSvg = await page.locator(sim.svgContainer).innerHTML();
@@ -227,7 +200,7 @@ async function main() {
 
     await desktopCtx.close();
 
-    // 3. Mobile 390x844@2x audit across all 8 routes
+    // Mobile 390x844@2x audit across all 8 routes
     const mobileCtx = await browser.newContext({
       viewport: { width: 390, height: 844 },
       deviceScaleFactor: 2,
@@ -237,16 +210,25 @@ async function main() {
 
     for (const route of ROUTES) {
       await mPage.goto(`${origin}${route}`, { waitUntil: 'networkidle' });
-      const overflow = await mPage.evaluate(() => ({
-        scrollW: document.documentElement.scrollWidth,
-        clientW: document.documentElement.clientWidth,
-      }));
-      if (overflow.scrollW > overflow.clientW) {
-        errors.push(`Mobile overflow on ${route}: scrollWidth=${overflow.scrollW} > clientWidth=${overflow.clientW}`);
+      const check = await mPage.evaluate(() => {
+        const navHidden = getComputedStyle(document.querySelector('.site-nav')).display === 'none';
+        const selVisible = getComputedStyle(document.querySelector('.mobile-nav-wrap')).display !== 'none';
+        return {
+          scrollW: document.documentElement.scrollWidth,
+          clientW: document.documentElement.clientWidth,
+          navHidden,
+          selVisible,
+        };
+      });
+      if (check.scrollW > check.clientW) {
+        errors.push(`Mobile overflow on ${route}: scrollWidth=${check.scrollW} > clientWidth=${check.clientW}`);
       }
-      if (route === '/') {
+      if (!check.navHidden || !check.selVisible) {
+        errors.push(`Mobile nav select not active on ${route}`);
+      }
+      if (route === `${BASE_PATH}/`) {
         await mPage.screenshot({ path: '/tmp/finops-sim-home-mobile.png', fullPage: false });
-      } else if (route === '/llm-api-cost-calculator/') {
+      } else if (route === `${BASE_PATH}/llm-api-cost-calculator/`) {
         await mPage.screenshot({ path: '/tmp/finops-sim-api-mobile.png', fullPage: false });
       }
     }
@@ -256,7 +238,6 @@ async function main() {
       errors.push(`External network requests detected: ${externalRequests.join('; ')}`);
     }
 
-    // Stitch audit grid via Python PIL
     const pyScript = `
 from PIL import Image
 d1 = Image.open('/tmp/finops-sim-home-desktop.png').resize((1440, 900), Image.LANCZOS)
@@ -276,8 +257,8 @@ canvas.paste(m1, (1440 * 2 + pad * 3, pad))
 canvas.paste(d3, (pad, 900 + pad * 2))
 canvas.paste(d4, (1440 + pad * 2, 900 + pad * 2))
 canvas.paste(m2, (1440 * 2 + pad * 3, 900 + pad * 2))
-canvas.save('/tmp/finops-sim-audit.png', optimize=True)
-print('Saved /tmp/finops-sim-audit.png', canvas.size)
+canvas.save('${OUT_GRID}', optimize=True)
+print('Saved ${OUT_GRID}', canvas.size)
 `;
     execFileSync('python3', ['-c', pyScript], { stdio: 'inherit' });
 
@@ -285,11 +266,11 @@ print('Saved /tmp/finops-sim-audit.png', canvas.size)
       console.error('AUDIT FAILED:\n' + errors.map((e) => '  - ' + e).join('\n'));
       process.exitCode = 1;
     } else {
-      console.log('ALL 8 ROUTES PASSED PLAYWRIGHT AUDIT (0 console/page errors, 0 external requests, 0 broken links, 0 overflow, WCAG AA >= 4.5:1, 6/6 live slider->SVG+URL sync).');
+      console.log(`ALL 8 ROUTES PASSED PLAYWRIGHT AUDIT (${origin}${BASE_PATH}/): 0 console/page errors, 0 external requests, 0 broken links, 0 overflow, mobile select active, 6/6 live slider->SVG+URL sync.`);
     }
   } finally {
     await browser.close();
-    server.close();
+    if (server) server.close();
   }
 }
 

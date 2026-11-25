@@ -1,6 +1,6 @@
 ---
 import BaseLayout from './BaseLayout.astro';
-import { SIMULATORS } from '../data/simulators';
+import { SIMULATORS, SITE_ORIGIN, withBase } from '../data/simulators';
 
 export interface FaqItem {
   question: string;
@@ -20,7 +20,6 @@ interface Props {
 const { simId, pageTitle, h1, subtitle, metaDescription, canonicalPath, faqs } = Astro.props;
 const related = SIMULATORS.filter((s) => s.id !== simId).slice(0, 3);
 
-const siteOrigin = 'https://tokenscale.dev';
 const jsonLd = [
   {
     '@context': 'https://schema.org',
@@ -28,7 +27,7 @@ const jsonLd = [
     name: h1,
     applicationCategory: 'DeveloperApplication',
     operatingSystem: 'Any',
-    url: `${siteOrigin}${canonicalPath}`,
+    url: `${SITE_ORIGIN}${withBase(canonicalPath)}`,
     description: metaDescription,
     offers: {
       '@type': 'Offer',

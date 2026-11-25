@@ -11,7 +11,7 @@ const faqs = [
   {
     question: 'Why does the reasoning token multiplier only apply to certain models?',
     answer:
-      'Reasoning models like o3-mini, DeepSeek-R1, Claude 3.7 Sonnet (extended thinking), and Gemini 2.5 Pro emit hidden chain-of-thought tokens billed at output token rates. Non-reasoning models emit only visible completion tokens, so the multiplier selectively models hidden thinking overhead.',
+      'Reasoning models like OpenAI o3, DeepSeek-R1, Claude Sonnet 4.5 (extended thinking), and Gemini 2.5 Pro emit hidden chain-of-thought tokens billed at output token rates. Non-reasoning models emit only visible completion tokens, so the multiplier selectively models hidden thinking overhead.',
   },
   {
     question: 'When should teams use the Batch API 50% discount?',
@@ -29,7 +29,7 @@ const faqs = [
   pageTitle="LLM API & Prompt Caching Cost Simulator | TokenScale"
   h1="LLM API & Prompt Caching Cost Simulator"
   subtitle="Compare monthly spend across OpenAI, Anthropic, Google Gemini, DeepSeek, and Groq with prompt cache hit rates, reasoning token multipliers, and batch API discounts."
-  metaDescription="Interactive multivariable LLM API cost simulator comparing GPT-4.1, Claude 3.7 Sonnet, Gemini 2.5, DeepSeek, and Groq with prompt caching, thinking token multipliers, and batch discounts."
+  metaDescription="Interactive multivariable LLM API cost simulator comparing GPT-4.1, OpenAI o3, Claude Sonnet 4.5, Gemini 2.5, DeepSeek, and Groq with prompt caching, thinking token multipliers, and batch discounts."
   canonicalPath="/llm-api-cost-calculator/"
   faqs={faqs}
 >
@@ -104,7 +104,7 @@ const faqs = [
         <p class="kpi-sub" id="kpiCheapestName">—</p>
       </div>
       <div class="kpi-cell">
-        <p class="kpi-label">Flagship (Claude 3.7 Sonnet)</p>
+        <p class="kpi-label">Flagship (Claude Sonnet 4.5)</p>
         <p class="kpi-value" id="kpiFlagship">$0</p>
         <p class="kpi-sub" id="kpiCacheSavings">Cache savings: $0/mo</p>
       </div>
@@ -244,8 +244,8 @@ const faqs = [
         label: `${m.name}`,
         value: m.monthlyTotal,
         displayValue: formatCompactUsd(m.monthlyTotal),
-        color: i === 0 ? CHART_COLORS[1] : m.id === 'claude-3.7-sonnet' ? CHART_COLORS[0] : '#475569',
-        highlight: i === 0 || m.id === 'claude-3.7-sonnet',
+        color: i === 0 ? CHART_COLORS[1] : m.id === 'claude-sonnet-4.5' ? CHART_COLORS[0] : '#475569',
+        highlight: i === 0 || m.id === 'claude-sonnet-4.5',
       })),
       { title: 'Monthly LLM API Cost by Model' }
     );

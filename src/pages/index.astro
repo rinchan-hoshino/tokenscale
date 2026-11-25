@@ -1,14 +1,15 @@
 ---
 import BaseLayout from '../layouts/BaseLayout.astro';
-import { SIMULATORS } from '../data/simulators';
+import { SIMULATORS, SITE_ORIGIN, withBase } from '../data/simulators';
 import pricing from '../data/pricing-2026.json';
 
+const apiSimHref = withBase('/llm-api-cost-calculator/');
 const jsonLd = [
   {
     '@context': 'https://schema.org',
     '@type': 'WebApplication',
     name: 'TokenScale AI & Cloud FinOps Simulators',
-    url: 'https://tokenscale.dev/',
+    url: `${SITE_ORIGIN}${withBase('/')}`,
     applicationCategory: 'DeveloperApplication',
     operatingSystem: 'Any',
     description:
@@ -42,7 +43,7 @@ const jsonLd = [
         <div class="controls-pane">
           <div class="control-row">
             <strong style="font-size:var(--text-body);color:var(--ink-primary);">Quick bench: LLM API spend</strong>
-            <a href="/llm-api-cost-calculator/" style="font-size:var(--text-sm);font-weight:600;">Full simulator &rarr;</a>
+            <a href={apiSimHref} style="font-size:var(--text-sm);font-weight:600;">Full simulator &rarr;</a>
           </div>
 
           <div class="control-field">
@@ -66,7 +67,7 @@ const jsonLd = [
             <input class="toggle-checkbox" id="homeBatchToggle" type="checkbox" />
           </div>
 
-          <a href="/llm-api-cost-calculator/" class="btn-primary" style="margin-top:auto;">Open full 10-model simulator</a>
+          <a href={apiSimHref} class="btn-primary" style="margin-top:auto;">Open full 10-model simulator</a>
         </div>
 
         <div class="results-pane">
@@ -82,7 +83,7 @@ const jsonLd = [
               <p class="kpi-sub" id="homeKpiGptSub">3.2K sys + 1.2K in / 700 out</p>
             </div>
             <div class="kpi-cell">
-              <p class="kpi-label">Claude 3.7 Sonnet</p>
+              <p class="kpi-label">Claude Sonnet 4.5</p>
               <p class="kpi-value" id="homeKpiClaude">$0</p>
               <p class="kpi-sub" id="homeKpiClaudeSave">Cache saves $0/mo</p>
             </div>
@@ -150,7 +151,7 @@ const jsonLd = [
   function render() {
     const res = calculateLlmApiCost(state);
     const gpt = res.models.find((m) => m.id === 'gpt-4.1') ?? res.models[0];
-    const claude = res.models.find((m) => m.id === 'claude-3.7-sonnet') ?? res.flagshipModel;
+    const claude = res.models.find((m) => m.id === 'claude-sonnet-4.5') ?? res.flagshipModel;
 
     document.getElementById('homeKpiCheapest')!.textContent = formatUsd(res.cheapestModel.monthlyTotal);
     document.getElementById('homeKpiCheapestName')!.textContent = `${res.cheapestModel.name} (${res.cheapestModel.provider})`;
@@ -158,7 +159,7 @@ const jsonLd = [
     document.getElementById('homeKpiClaude')!.textContent = formatUsd(claude.monthlyTotal);
     document.getElementById('homeKpiClaudeSave')!.textContent = `Cache saves ${formatUsd(claude.cacheSavingsUsd)}/mo`;
 
-    const featuredIds = ['gemini-2.5-flash', 'deepseek-v3', 'gpt-4.1-mini', 'gpt-4.1', 'gemini-2.5-pro', 'claude-3.7-sonnet'];
+    const featuredIds = ['gemini-2.5-flash', 'deepseek-v3', 'gpt-4.1-mini', 'gpt-4.1', 'gemini-2.5-pro', 'claude-sonnet-4.5'];
     const featured = featuredIds
       .map((id) => res.models.find((m) => m.id === id))
       .filter((m): m is NonNullable<typeof m> => Boolean(m))

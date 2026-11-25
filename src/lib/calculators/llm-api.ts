@@ -129,10 +129,10 @@ export function calculateLlmApiCost(raw: LlmApiInput): LlmApiResult {
     .sort((a, b) => a.monthlyTotal - b.monthlyTotal);
 
   const cheapestModel = models[0];
-  const flagshipModel = models.find((m) => m.id === 'claude-3.7-sonnet') ?? models[models.length - 1];
+  const flagshipModel = models.find((m) => m.id === 'claude-sonnet-4.5') ?? models[models.length - 1];
 
   const cacheRates = [0, 0.25, 0.5, 0.75, 0.95];
-  const sensitivityIds = ['claude-3.7-sonnet', 'gpt-4.1', 'gemini-2.5-pro', 'gpt-4.1-mini'];
+  const sensitivityIds = ['claude-sonnet-4.5', 'gpt-4.1', 'gemini-2.5-pro', 'gpt-4.1-mini'];
   const series = sensitivityIds
     .map((id) => pricing.llmApiModels.find((m) => m.id === id))
     .filter((m): m is NonNullable<typeof m> => Boolean(m))

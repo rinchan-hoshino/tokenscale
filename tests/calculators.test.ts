@@ -19,8 +19,8 @@ describe('1. LLM API & Prompt Caching Simulator', () => {
   it('higher prompt cache hit rate monotonically reduces cost for caching models', () => {
     const lowCache = calculateLlmApiCost({ ...LLM_API_PRESETS.scaleup, cacheHitRate: 0 });
     const highCache = calculateLlmApiCost({ ...LLM_API_PRESETS.scaleup, cacheHitRate: 0.9 });
-    const sonnetLow = lowCache.models.find((m) => m.id === 'claude-3.7-sonnet')!;
-    const sonnetHigh = highCache.models.find((m) => m.id === 'claude-3.7-sonnet')!;
+    const sonnetLow = lowCache.models.find((m) => m.id === 'claude-sonnet-4.5')!;
+    const sonnetHigh = highCache.models.find((m) => m.id === 'claude-sonnet-4.5')!;
     expect(sonnetHigh.monthlyTotal).toBeLessThan(sonnetLow.monthlyTotal);
     expect(sonnetHigh.cacheSavingsUsd).toBeGreaterThan(0);
   });
