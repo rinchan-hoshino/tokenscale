@@ -5,6 +5,7 @@ import { calculateGpuBreakeven, GPU_BREAKEVEN_PRESETS } from '../src/lib/calcula
 import { calculateCloudEgress, CLOUD_EGRESS_PRESETS } from '../src/lib/calculators/cloud-egress';
 import { calculateRagVectorCost, RAG_VECTOR_PRESETS } from '../src/lib/calculators/rag-vector';
 import { calculateVoiceAiCost, VOICE_AI_PRESETS } from '../src/lib/calculators/voice-ai';
+import { buildMarkdownTable } from '../src/lib/format';
 
 describe('1. LLM API & Prompt Caching Simulator', () => {
   it('computes positive costs and sorts ascending', () => {
@@ -127,5 +128,21 @@ describe('6. Realtime Voice AI Pipeline Simulator', () => {
     const small = calculateVoiceAiCost({ ...VOICE_AI_PRESETS.mvp, dailyCalls: 100 });
     const big = calculateVoiceAiCost({ ...VOICE_AI_PRESETS.mvp, dailyCalls: 1000 });
     expect(big.cheapest.monthlyTotalUsd).toBeCloseTo(small.cheapest.monthlyTotalUsd * 10, 4);
+  });
+});
+
+describe('7. Markdown Export & Backlink Formatter', () => {
+  it('renders right-aligned numeric columns, escapes pipes, and appends TokenScale backlink', () => {
+    const md = buildMarkdownTable(
+      'LLM API Cost',
+      ['Model', 'Monthly Total'],
+      [['GPT-5.4 | Batch', '$1,200']],
+      'https://rinchan-hoshino.github.io/tokenscale/llm-api-cost-calculator/?dailyRequests=45000',
+      [1]
+    );
+    expect(md).toContain('### LLM API Cost');
+    expect(md).toContain('| :--- | ---: |');
+    expect(md).toContain('| GPT-5.4 \\| Batch | $1,200 |');
+    expect(md).toContain('*Simulated with [TokenScale](https://rinchan-hoshino.github.io/tokenscale/llm-api-cost-calculator/?dailyRequests=45000)*');
   });
 });

@@ -72,6 +72,17 @@ const jsonLd = [
           <slot name="results" />
         </div>
       </div>
+      <div class="embed-attribution">
+        <a
+          class="embed-full-link"
+          id="embedFullLink"
+          href={`${SITE_ORIGIN}${withBase(canonicalPath)}`}
+          target="_blank"
+          rel="noopener noreferrer"
+        >
+          Powered by TokenScale &#8599;
+        </a>
+      </div>
     </div>
   </section>
 

@@ -14,8 +14,9 @@ TokenScale is a 100% static, client-side AI & Cloud Infrastructure FinOps simula
 | `/rag-vector-cost-calculator/` | RAG Vector Database & Embedding Cost Simulator | `src/lib/calculators/rag-vector.ts` | Document count, chunk size/overlap, 768/1536/3072-d, FP32/INT8/Binary quantization, monthly churn, sustained QPS; stacked SVG breakdown across pgvector, Qdrant, Pinecone, Weaviate |
 | `/voice-ai-cost-calculator/` | Realtime Voice AI Pipeline Cost Simulator | `src/lib/calculators/voice-ai.ts` | Daily calls, duration, VAD silence trimming %, telephony toggle; stacked per-minute SVG breakdown comparing cascaded STT+LLM+TTS vs native Speech-to-Speech |
 | `/about/` | Methodology & Pricing Sources | `src/data/pricing-2026.json` | Dataset version transparency, unit conventions (GiB vs decimal TB), published rate snapshot |
-| `/sitemap.xml` | Static XML Sitemap | `src/pages/sitemap.xml.ts` | Auto-generated sitemap covering all 8 routes |
+| `/sitemap.xml` | Static XML Sitemap | `src/pages/sitemap.xml.ts` | Auto-generated sitemap covering all 8 routes (`lastmod` synced with `pricing-2026.json`) |
 | `/robots.txt` | Crawler Directives | `public/robots.txt` | Points crawlers to `/sitemap.xml` |
+| `/og-card.png` | Social Preview Card | `scripts/generate-og-card.mjs` | Crisp `1200×630` engineering FinOps Open Graph & Twitter `summary_large_image` card |
 
 ## Shared Capabilities Across All 6 Simulators
 
@@ -23,11 +24,13 @@ TokenScale is a 100% static, client-side AI & Cloud Infrastructure FinOps simula
 - **Segmented Workload Presets**: `Startup MVP`, `Scale-up SaaS`, `Enterprise Batch`.
 - **Bidirectional Slider + Numeric Input Sync**: `font-variant-numeric: tabular-nums` prevents horizontal jitter.
 - **Live URL Query Serialization**: `src/lib/url-state.ts` encodes every parameter into the URL for instant scenario sharing.
+- **Frameless Embed Mode (`?embed=1`) + One-Click `Copy Embed`**: Hides site navigation, docs, and footer to render a compact iframe-ready workbench with a live `Powered by TokenScale ↗` attribution link that carries user-modified parameters to the full page.
+- **One-Click GitHub/ADR Markdown Export (`Copy Markdown`)**: Copies a formatted Markdown comparison table with a natural `*Simulated with [TokenScale](...)*` backlink containing the live scenario URL (available on all 6 simulators and the Home Quick Bench).
 - **Pure Native Responsive SVG Charts**: `src/lib/svg-charts.ts` renders horizontal bars, stacked bars, and multi-series/crossover line charts with zero charting library bloat.
 - **One-Click CSV Export**: `src/lib/format.ts` generates clean RFC-4180 CSV downloads for architecture reviews.
-- **Structured SEO Metadata**: `SoftwareApplication` and `FAQPage` JSON-LD schemas on all 6 simulator pages.
+- **Structured SEO & Social Metadata**: `SoftwareApplication` + `FAQPage` JSON-LD schemas plus full `og:image` (`1200×630`) and `twitter:card` tags on all pages.
 
 ## Verification & Quality Gates
 
-- **Unit Tests**: `npm test` (Vitest) — 14 tests covering formula accuracy, boundary clamping, and monotonicity across all 6 engines.
-- **Playwright Audit**: `npm run audit` (`scripts/audit-playwright.mjs`) — verifies HTTP 200 across all 8 routes + sitemap/robots, total gzipped JS `< 35KB`, zero console/page errors, zero external requests, zero broken internal links, zero horizontal overflow on `1440×900` and `390×844`, WCAG AA contrast `>= 4.5:1`, and live slider-to-SVG + URL query reactivity across all 6 simulators.
+- **Unit Tests**: `npm test` (Vitest) — 15 tests covering formula accuracy, boundary clamping, monotonicity across all 6 engines, and Markdown export backlink formatting.
+- **Playwright Audit**: `npm run audit` (`scripts/audit-playwright.mjs`) — verifies HTTP 200 across all 8 routes + sitemap/robots/og-card, total gzipped JS `< 35KB`, zero console/page errors, zero external requests, zero broken internal links, zero horizontal overflow on `1440×900`, `390×844`, and `?embed=1`, `Copy Markdown` & `Copy Embed` clipboard output, and live slider-to-SVG + URL query reactivity across all 6 simulators.

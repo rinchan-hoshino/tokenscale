@@ -129,6 +129,8 @@ const faqs = [
       <span class="control-hint">VRAM figures reported in GiB (1024^3 bytes) matching nvidia-smi.</span>
       <div class="action-buttons">
         <button type="button" class="btn-secondary" id="copyUrlBtn">Copy scenario URL</button>
+        <button type="button" class="btn-secondary" id="copyMdBtn">Copy Markdown</button>
+        <button type="button" class="btn-secondary" id="copyEmbedBtn">Copy Embed</button>
         <button type="button" class="btn-primary" id="exportCsvBtn">Export CSV</button>
       </div>
     </div>
@@ -184,8 +186,8 @@ const faqs = [
 <script>
   import pricing from '../../data/pricing-2026.json';
   import { calculateLlmVram, LLM_VRAM_PRESETS, type LlmVramInput } from '../../lib/calculators/llm-vram';
-  import { formatNumber, downloadCsv } from '../../lib/format';
-  import { readStateFromUrl, writeStateToUrl, copyCurrentUrl, type ParamSpec } from '../../lib/url-state';
+  import { formatNumber, downloadCsv, buildMarkdownTable } from '../../lib/format';
+  import { readStateFromUrl, writeStateToUrl, copyCurrentUrl, copyEmbedSnippet, copyTextWithFeedback, getCanonicalShareUrl, type ParamSpec } from '../../lib/url-state';
   import { renderStackedBarChart, CHART_COLORS } from '../../lib/svg-charts';
 
   const SPEC: ParamSpec = {
@@ -387,6 +389,28 @@ const faqs = [
 
   document.getElementById('copyUrlBtn')!.addEventListener('click', (e) => {
     copyCurrentUrl(e.currentTarget as HTMLButtonElement);
+  });
+
+  document.getElementById('copyMdBtn')!.addEventListener('click', (e) => {
+    const md = buildMarkdownTable(
+      `Local LLM VRAM Sizing (${state.paramsB}B ${state.quantizationId}, ${Math.round(state.contextLength / 1024)}K ctx × ${state.concurrentSeqs} seqs — ${lastResult.totalVramGB.toFixed(1)} GiB)`,
+      ['Hardware', 'Class', 'Usable VRAM', 'Utilization', 'Est. Decode', 'Fit Status'],
+      lastResult.hardwareMatches.map((h) => [
+        h.name,
+        h.category,
+        `${h.vramGB} GiB`,
+        `${Math.min(999, h.utilizationPct).toFixed(0)}%`,
+        `${formatNumber(h.estimatedTokPerSec, 0)} tok/s`,
+        h.fitStatus === 'Multi-GPU' ? `${h.gpusRequired}x GPUs` : h.fitStatus,
+      ]),
+      getCanonicalShareUrl(false),
+      [2, 3, 4]
+    );
+    copyTextWithFeedback(e.currentTarget as HTMLButtonElement, md, 'Markdown copied');
+  });
+
+  document.getElementById('copyEmbedBtn')!.addEventListener('click', (e) => {
+    copyEmbedSnippet(e.currentTarget as HTMLButtonElement, 'TokenScale Local LLM VRAM Calculator');
   });
 
   document.getElementById('exportCsvBtn')!.addEventListener('click', () => {

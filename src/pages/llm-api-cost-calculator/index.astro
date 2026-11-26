@@ -119,6 +119,8 @@ const faqs = [
       <span class="control-hint">Shareable URL updates automatically as you adjust parameters.</span>
       <div class="action-buttons">
         <button type="button" class="btn-secondary" id="copyUrlBtn">Copy scenario URL</button>
+        <button type="button" class="btn-secondary" id="copyMdBtn">Copy Markdown</button>
+        <button type="button" class="btn-secondary" id="copyEmbedBtn">Copy Embed</button>
         <button type="button" class="btn-primary" id="exportCsvBtn">Export CSV</button>
       </div>
     </div>
@@ -180,8 +182,8 @@ const faqs = [
 
 <script>
   import { calculateLlmApiCost, LLM_API_PRESETS, type LlmApiInput } from '../../lib/calculators/llm-api';
-  import { formatUsd, formatCompactUsd, formatCompactNumber, downloadCsv } from '../../lib/format';
-  import { readStateFromUrl, writeStateToUrl, copyCurrentUrl, type ParamSpec } from '../../lib/url-state';
+  import { formatUsd, formatCompactUsd, formatCompactNumber, downloadCsv, buildMarkdownTable } from '../../lib/format';
+  import { readStateFromUrl, writeStateToUrl, copyCurrentUrl, copyEmbedSnippet, copyTextWithFeedback, getCanonicalShareUrl, type ParamSpec } from '../../lib/url-state';
   import { renderHorizontalBarChart, renderLineChart, CHART_COLORS } from '../../lib/svg-charts';
 
   const SPEC: ParamSpec = {
@@ -312,6 +314,28 @@ const faqs = [
 
   document.getElementById('copyUrlBtn')!.addEventListener('click', (e) => {
     copyCurrentUrl(e.currentTarget as HTMLButtonElement);
+  });
+
+  document.getElementById('copyMdBtn')!.addEventListener('click', (e) => {
+    const md = buildMarkdownTable(
+      `LLM API Monthly Cost (${formatCompactNumber(state.dailyRequests)} req/day, ${Math.round(state.cacheHitRate * 100)}% cache${state.useBatchApi ? ', Batch 50%' : ''})`,
+      ['Model', 'Provider', 'Input + Cache', 'Output', 'Cache Saved', 'Monthly Total'],
+      lastResult.models.map((m) => [
+        m.name,
+        m.provider,
+        formatUsd(m.monthlyInputCost + m.monthlyCachedCost),
+        formatUsd(m.monthlyOutputCost),
+        m.cacheSavingsUsd > 0 ? `-${formatUsd(m.cacheSavingsUsd)}` : '$0.00',
+        `**${formatUsd(m.monthlyTotal)}**`,
+      ]),
+      getCanonicalShareUrl(false),
+      [2, 3, 4, 5]
+    );
+    copyTextWithFeedback(e.currentTarget as HTMLButtonElement, md, 'Markdown copied');
+  });
+
+  document.getElementById('copyEmbedBtn')!.addEventListener('click', (e) => {
+    copyEmbedSnippet(e.currentTarget as HTMLButtonElement, 'TokenScale LLM API Cost Simulator');
   });
 
   document.getElementById('exportCsvBtn')!.addEventListener('click', () => {

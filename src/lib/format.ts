@@ -39,6 +39,30 @@ export function formatCompactNumber(value: number): string {
   return formatNumber(value, 0);
 }
 
+export function buildMarkdownTable(
+  title: string,
+  headers: string[],
+  rows: (string | number)[][],
+  shareUrl: string,
+  rightAlignCols: number[] = []
+): string {
+  const esc = (cell: string | number): string =>
+    String(cell).replace(/\|/g, '\\|').replace(/\r?\n/g, ' ');
+  const alignSet = new Set(rightAlignCols);
+  const headerLine = `| ${headers.map(esc).join(' | ')} |`;
+  const sepLine = `| ${headers.map((_, i) => (alignSet.has(i) ? '---:' : ':---')).join(' | ')} |`;
+  const bodyLines = rows.map((r) => `| ${r.map(esc).join(' | ')} |`);
+  return [
+    `### ${title}`,
+    '',
+    headerLine,
+    sepLine,
+    ...bodyLines,
+    '',
+    `*Simulated with [TokenScale](${shareUrl})*`,
+  ].join('\n');
+}
+
 export function downloadCsv(filename: string, headers: string[], rows: (string | number)[][]): void {
   const escapeCell = (cell: string | number): string => {
     const s = String(cell);

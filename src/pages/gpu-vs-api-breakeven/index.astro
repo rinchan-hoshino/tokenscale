@@ -120,6 +120,8 @@ const faqs = [
       <span class="control-hint" id="capacityNote">1 GPU sustains 0M tokens/day at current utilization.</span>
       <div class="action-buttons">
         <button type="button" class="btn-secondary" id="copyUrlBtn">Copy scenario URL</button>
+        <button type="button" class="btn-secondary" id="copyMdBtn">Copy Markdown</button>
+        <button type="button" class="btn-secondary" id="copyEmbedBtn">Copy Embed</button>
         <button type="button" class="btn-primary" id="exportCsvBtn">Export CSV</button>
       </div>
     </div>
@@ -175,8 +177,8 @@ const faqs = [
 <script>
   import pricing from '../../data/pricing-2026.json';
   import { calculateGpuBreakeven, GPU_BREAKEVEN_PRESETS, type GpuBreakevenInput } from '../../lib/calculators/gpu-vs-api';
-  import { formatUsd, downloadCsv } from '../../lib/format';
-  import { readStateFromUrl, writeStateToUrl, copyCurrentUrl, type ParamSpec } from '../../lib/url-state';
+  import { formatUsd, downloadCsv, buildMarkdownTable } from '../../lib/format';
+  import { readStateFromUrl, writeStateToUrl, copyCurrentUrl, copyEmbedSnippet, copyTextWithFeedback, getCanonicalShareUrl, type ParamSpec } from '../../lib/url-state';
   import { renderLineChart, CHART_COLORS } from '../../lib/svg-charts';
 
   const SPEC: ParamSpec = {
@@ -353,6 +355,31 @@ const faqs = [
 
   document.getElementById('copyUrlBtn')!.addEventListener('click', (e) => {
     copyCurrentUrl(e.currentTarget as HTMLButtonElement);
+  });
+
+  document.getElementById('copyMdBtn')!.addEventListener('click', (e) => {
+    const sampleIndices = [2, 6, 10, 14, 18, 24].filter((i) => i < lastResult.curve.length);
+    const md = buildMarkdownTable(
+      `GPU vs Managed API Break-Even ($${state.gpuHourlyUsd.toFixed(2)}/hr GPU @ ${state.gpuUtilizationPct}% util vs $${lastResult.blendedApiPer1M.toFixed(2)}/1M API)`,
+      ['Daily Volume', 'GPUs Needed', 'Self-Hosted GPU / mo', 'Managed API / mo', 'Cheaper Option'],
+      sampleIndices.map((i) => {
+        const pt = lastResult.curve[i];
+        return [
+          `${pt.dailyTokensM.toFixed(1)}M / day`,
+          `${pt.gpusNeeded}x`,
+          formatUsd(pt.gpuMonthlyUsd),
+          formatUsd(pt.apiMonthlyUsd),
+          pt.gpuMonthlyUsd < pt.apiMonthlyUsd ? 'Self-Hosted GPU' : 'Managed API',
+        ];
+      }),
+      getCanonicalShareUrl(false),
+      [1, 2, 3]
+    );
+    copyTextWithFeedback(e.currentTarget as HTMLButtonElement, md, 'Markdown copied');
+  });
+
+  document.getElementById('copyEmbedBtn')!.addEventListener('click', (e) => {
+    copyEmbedSnippet(e.currentTarget as HTMLButtonElement, 'TokenScale GPU vs API Break-Even Simulator');
   });
 
   document.getElementById('exportCsvBtn')!.addEventListener('click', () => {

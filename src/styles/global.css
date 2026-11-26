@@ -392,6 +392,7 @@ summary:focus-visible {
 .action-buttons {
   display: flex;
   align-items: center;
+  flex-wrap: wrap;
   gap: 8px;
 }
 
@@ -727,6 +728,47 @@ summary:focus-visible {
   .header-inner {
     gap: 12px;
   }
+}
+
+/* Embed mode (?embed=1) — compact frameless workbench */
+.embed-attribution {
+  display: none;
+}
+
+html.is-embed body {
+  min-height: auto;
+  background-color: var(--bg-surface);
+}
+
+html.is-embed .site-header,
+html.is-embed .site-footer,
+html.is-embed .page-head,
+html.is-embed .doc-section {
+  display: none;
+}
+
+html.is-embed .workbench-section {
+  padding: 12px 0 10px;
+}
+
+html.is-embed .container {
+  padding: 0 12px;
+}
+
+html.is-embed .embed-attribution {
+  display: flex;
+  justify-content: flex-end;
+  padding-top: 8px;
+}
+
+.embed-full-link {
+  font-size: var(--text-sm);
+  font-weight: 600;
+  color: var(--ink-secondary);
+}
+
+.embed-full-link:hover {
+  color: var(--accent);
 }
 
 @media (prefers-reduced-motion: reduce) {

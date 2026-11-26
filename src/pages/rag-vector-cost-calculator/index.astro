@@ -122,6 +122,8 @@ const faqs = [
       <span class="control-hint" id="queryVolNote">0M vector queries / month.</span>
       <div class="action-buttons">
         <button type="button" class="btn-secondary" id="copyUrlBtn">Copy scenario URL</button>
+        <button type="button" class="btn-secondary" id="copyMdBtn">Copy Markdown</button>
+        <button type="button" class="btn-secondary" id="copyEmbedBtn">Copy Embed</button>
         <button type="button" class="btn-primary" id="exportCsvBtn">Export CSV</button>
       </div>
     </div>
@@ -177,8 +179,8 @@ const faqs = [
 
 <script>
   import { calculateRagVectorCost, RAG_VECTOR_PRESETS, type RagVectorInput, type VectorQuantization } from '../../lib/calculators/rag-vector';
-  import { formatUsd, formatCompactUsd, formatCompactNumber, downloadCsv } from '../../lib/format';
-  import { readStateFromUrl, writeStateToUrl, copyCurrentUrl, type ParamSpec } from '../../lib/url-state';
+  import { formatUsd, formatCompactUsd, formatCompactNumber, downloadCsv, buildMarkdownTable } from '../../lib/format';
+  import { readStateFromUrl, writeStateToUrl, copyCurrentUrl, copyEmbedSnippet, copyTextWithFeedback, getCanonicalShareUrl, type ParamSpec } from '../../lib/url-state';
   import { renderStackedBarChart, CHART_COLORS } from '../../lib/svg-charts';
 
   const SPEC: ParamSpec = {
@@ -308,6 +310,28 @@ const faqs = [
 
   document.getElementById('copyUrlBtn')!.addEventListener('click', (e) => {
     copyCurrentUrl(e.currentTarget as HTMLButtonElement);
+  });
+
+  document.getElementById('copyMdBtn')!.addEventListener('click', (e) => {
+    const md = buildMarkdownTable(
+      `RAG Vector DB Cost (${formatCompactNumber(lastResult.totalVectors)} vectors, ${state.dimensions}d ${state.quantization.toUpperCase()}, ${state.queryQps} QPS)`,
+      ['Vector Database', 'Index RAM', 'Storage / RAM', 'Query Compute', 'Embed Refresh', 'Monthly Total'],
+      lastResult.providers.map((p) => [
+        p.name,
+        `${p.indexRamGB.toFixed(1)} GiB`,
+        formatUsd(p.storageCostUsd),
+        formatUsd(p.computeQueryUsd),
+        formatUsd(p.embeddingRefreshUsd),
+        `**${formatUsd(p.monthlyTotalUsd)}**`,
+      ]),
+      getCanonicalShareUrl(false),
+      [1, 2, 3, 4, 5]
+    );
+    copyTextWithFeedback(e.currentTarget as HTMLButtonElement, md, 'Markdown copied');
+  });
+
+  document.getElementById('copyEmbedBtn')!.addEventListener('click', (e) => {
+    copyEmbedSnippet(e.currentTarget as HTMLButtonElement, 'TokenScale RAG Vector DB Cost Simulator');
   });
 
   document.getElementById('exportCsvBtn')!.addEventListener('click', () => {

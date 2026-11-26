@@ -35,6 +35,7 @@ const MIME = {
   '.css': 'text/css; charset=utf-8',
   '.js': 'application/javascript; charset=utf-8',
   '.svg': 'image/svg+xml',
+  '.png': 'image/png',
   '.xml': 'application/xml; charset=utf-8',
   '.txt': 'text/plain; charset=utf-8',
   '.json': 'application/json; charset=utf-8',
@@ -114,7 +115,7 @@ async function main() {
   const externalRequests = [];
 
   try {
-    for (const metaPath of [`${BASE_PATH}/sitemap.xml`, `${BASE_PATH}/robots.txt`]) {
+    for (const metaPath of [`${BASE_PATH}/sitemap.xml`, `${BASE_PATH}/robots.txt`, `${BASE_PATH}/og-card.png`]) {
       const resp = await fetch(`${origin}${metaPath}`);
       if (resp.status !== 200) errors.push(`${metaPath} returned HTTP ${resp.status}`);
     }
@@ -122,6 +123,7 @@ async function main() {
     const desktopCtx = await browser.newContext({
       viewport: { width: 1440, height: 900 },
       deviceScaleFactor: 2,
+      permissions: ['clipboard-read', 'clipboard-write'],
     });
     const page = await desktopCtx.newPage();
 
@@ -168,6 +170,16 @@ async function main() {
       }
 
       if (route === `${BASE_PATH}/`) {
+        const meta = await page.evaluate(() => ({
+          ogImage: document.querySelector('meta[property="og:image"]')?.getAttribute('content') || '',
+          twitterCard: document.querySelector('meta[name="twitter:card"]')?.getAttribute('content') || '',
+        }));
+        if (!meta.ogImage.endsWith('/tokenscale/og-card.png')) {
+          errors.push(`Missing or invalid og:image on ${route}: ${meta.ogImage}`);
+        }
+        if (meta.twitterCard !== 'summary_large_image') {
+          errors.push(`Missing or invalid twitter:card on ${route}: ${meta.twitterCard}`);
+        }
         await page.screenshot({ path: '/tmp/finops-sim-home-desktop.png', fullPage: false });
       } else if (route === `${BASE_PATH}/llm-api-cost-calculator/`) {
         await page.screenshot({ path: '/tmp/finops-sim-api.png', fullPage: false });
@@ -196,6 +208,46 @@ async function main() {
       if (!afterUrl.includes(sim.param)) {
         errors.push(`URL query did not sync (${sim.param}) on ${sim.route}, got ${afterUrl}`);
       }
+    }
+
+    // Audit Copy Markdown + Copy Embed + ?embed=1 compact frameless mode
+    await page.goto(`${origin}${BASE_PATH}/llm-api-cost-calculator/?dailyRequests=120000`, { waitUntil: 'networkidle' });
+    await page.locator('#copyMdBtn').click();
+    const copiedMd = await page.evaluate(() => navigator.clipboard.readText());
+    if (!copiedMd.includes('| Model |') || !copiedMd.includes('*Simulated with [TokenScale](https://rinchan-hoshino.github.io/tokenscale/llm-api-cost-calculator/')) {
+      errors.push(`Copy Markdown did not produce expected table/backlink: ${copiedMd.slice(0, 140)}`);
+    }
+
+    await page.locator('#copyEmbedBtn').click();
+    const copiedEmbed = await page.evaluate(() => navigator.clipboard.readText());
+    if (!copiedEmbed.includes('<iframe src="https://rinchan-hoshino.github.io/tokenscale/llm-api-cost-calculator/') || !copiedEmbed.includes('embed=1')) {
+      errors.push(`Copy Embed did not produce expected iframe snippet: ${copiedEmbed.slice(0, 140)}`);
+    }
+
+    await page.goto(`${origin}${BASE_PATH}/llm-api-cost-calculator/?dailyRequests=120000&embed=1`, { waitUntil: 'networkidle' });
+    const embedCheck = await page.evaluate(() => ({
+      hasClass: document.documentElement.classList.contains('is-embed'),
+      headerHidden: getComputedStyle(document.querySelector('.site-header')).display === 'none',
+      footerHidden: getComputedStyle(document.querySelector('.site-footer')).display === 'none',
+      docHidden: getComputedStyle(document.querySelector('.doc-section')).display === 'none',
+      attrVisible: getComputedStyle(document.querySelector('.embed-attribution')).display !== 'none',
+      fullHref: document.querySelector('#embedFullLink')?.getAttribute('href') || '',
+      scrollW: document.documentElement.scrollWidth,
+      clientW: document.documentElement.clientWidth,
+    }));
+    if (!embedCheck.hasClass || !embedCheck.headerHidden || !embedCheck.footerHidden || !embedCheck.docHidden || !embedCheck.attrVisible) {
+      errors.push(`Embed mode layout check failed: ${JSON.stringify(embedCheck)}`);
+    }
+    if (!embedCheck.fullHref.includes('dailyRequests=120000') || embedCheck.fullHref.includes('embed=1')) {
+      errors.push(`Embed attribution full link invalid: ${embedCheck.fullHref}`);
+    }
+    if (embedCheck.scrollW > embedCheck.clientW) {
+      errors.push(`Embed mode overflow: scrollWidth=${embedCheck.scrollW} > clientWidth=${embedCheck.clientW}`);
+    }
+    await page.locator('#dailyRequestsRange').fill('200000');
+    await page.locator('#dailyRequestsRange').dispatchEvent('input');
+    if (!page.url().includes('embed=1') || !page.url().includes('dailyRequests=200000')) {
+      errors.push(`Embed mode lost embed=1 or param after slider change: ${page.url()}`);
     }
 
     await desktopCtx.close();

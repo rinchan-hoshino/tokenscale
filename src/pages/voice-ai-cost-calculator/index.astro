@@ -94,6 +94,8 @@ const faqs = [
       <span class="control-hint">Assumes 50/50 user-to-agent active talk ratio on Speech-to-Speech audio tokens.</span>
       <div class="action-buttons">
         <button type="button" class="btn-secondary" id="copyUrlBtn">Copy scenario URL</button>
+        <button type="button" class="btn-secondary" id="copyMdBtn">Copy Markdown</button>
+        <button type="button" class="btn-secondary" id="copyEmbedBtn">Copy Embed</button>
         <button type="button" class="btn-primary" id="exportCsvBtn">Export CSV</button>
       </div>
     </div>
@@ -150,8 +152,8 @@ const faqs = [
 
 <script>
   import { calculateVoiceAiCost, VOICE_AI_PRESETS, type VoiceAiInput } from '../../lib/calculators/voice-ai';
-  import { formatUsd, formatCompactUsd, formatCompactNumber, downloadCsv } from '../../lib/format';
-  import { readStateFromUrl, writeStateToUrl, copyCurrentUrl, type ParamSpec } from '../../lib/url-state';
+  import { formatUsd, formatCompactUsd, formatCompactNumber, downloadCsv, buildMarkdownTable } from '../../lib/format';
+  import { readStateFromUrl, writeStateToUrl, copyCurrentUrl, copyEmbedSnippet, copyTextWithFeedback, getCanonicalShareUrl, type ParamSpec } from '../../lib/url-state';
   import { renderStackedBarChart, CHART_COLORS } from '../../lib/svg-charts';
 
   const SPEC: ParamSpec = {
@@ -269,6 +271,26 @@ const faqs = [
 
   document.getElementById('copyUrlBtn')!.addEventListener('click', (e) => {
     copyCurrentUrl(e.currentTarget as HTMLButtonElement);
+  });
+
+  document.getElementById('copyMdBtn')!.addEventListener('click', (e) => {
+    const md = buildMarkdownTable(
+      `Realtime Voice AI Cost (${formatCompactNumber(state.dailyCalls)} calls/day × ${state.avgCallMinutes}m, ${state.silenceTrimPct}% VAD trim${state.includeTelephony ? ' + PSTN' : ''})`,
+      ['Voice AI Pipeline', 'Type', '$/min', 'Monthly Total'],
+      lastResult.pipelines.map((p) => [
+        p.name,
+        p.architecture,
+        `$${p.totalPerMin.toFixed(3)}`,
+        `**${formatUsd(p.monthlyTotalUsd)}**`,
+      ]),
+      getCanonicalShareUrl(false),
+      [2, 3]
+    );
+    copyTextWithFeedback(e.currentTarget as HTMLButtonElement, md, 'Markdown copied');
+  });
+
+  document.getElementById('copyEmbedBtn')!.addEventListener('click', (e) => {
+    copyEmbedSnippet(e.currentTarget as HTMLButtonElement, 'TokenScale Voice AI Cost Simulator');
   });
 
   document.getElementById('exportCsvBtn')!.addEventListener('click', () => {

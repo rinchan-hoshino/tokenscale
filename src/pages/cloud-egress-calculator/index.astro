@@ -97,6 +97,8 @@ const faqs = [
       <span class="control-hint">Decimal TB (1 TB = 1,000 GB) matching cloud provider billing units.</span>
       <div class="action-buttons">
         <button type="button" class="btn-secondary" id="copyUrlBtn">Copy scenario URL</button>
+        <button type="button" class="btn-secondary" id="copyMdBtn">Copy Markdown</button>
+        <button type="button" class="btn-secondary" id="copyEmbedBtn">Copy Embed</button>
         <button type="button" class="btn-primary" id="exportCsvBtn">Export CSV</button>
       </div>
     </div>
@@ -151,8 +153,8 @@ const faqs = [
 
 <script>
   import { calculateCloudEgress, CLOUD_EGRESS_PRESETS, type CloudEgressInput } from '../../lib/calculators/cloud-egress';
-  import { formatUsd, downloadCsv } from '../../lib/format';
-  import { readStateFromUrl, writeStateToUrl, copyCurrentUrl, type ParamSpec } from '../../lib/url-state';
+  import { formatUsd, downloadCsv, buildMarkdownTable } from '../../lib/format';
+  import { readStateFromUrl, writeStateToUrl, copyCurrentUrl, copyEmbedSnippet, copyTextWithFeedback, getCanonicalShareUrl, type ParamSpec } from '../../lib/url-state';
   import { renderLineChart, CHART_COLORS } from '../../lib/svg-charts';
 
   const SPEC: ParamSpec = {
@@ -249,6 +251,27 @@ const faqs = [
 
   document.getElementById('copyUrlBtn')!.addEventListener('click', (e) => {
     copyCurrentUrl(e.currentTarget as HTMLButtonElement);
+  });
+
+  document.getElementById('copyMdBtn')!.addEventListener('click', (e) => {
+    const md = buildMarkdownTable(
+      `Cloud Object Storage & Egress (${state.storageTB} TB stored, ${state.egressTB} TB/mo egress)`,
+      ['Provider', 'Storage', 'Egress', 'API Ops', 'Monthly Total'],
+      lastResult.providers.map((p) => [
+        p.name,
+        formatUsd(p.storageUsd),
+        formatUsd(p.egressUsd),
+        formatUsd(p.opsUsd),
+        `**${formatUsd(p.totalUsd)}**`,
+      ]),
+      getCanonicalShareUrl(false),
+      [1, 2, 3, 4]
+    );
+    copyTextWithFeedback(e.currentTarget as HTMLButtonElement, md, 'Markdown copied');
+  });
+
+  document.getElementById('copyEmbedBtn')!.addEventListener('click', (e) => {
+    copyEmbedSnippet(e.currentTarget as HTMLButtonElement, 'TokenScale Cloud Egress Cost Comparator');
   });
 
   document.getElementById('exportCsvBtn')!.addEventListener('click', () => {

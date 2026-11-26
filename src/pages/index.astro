@@ -92,7 +92,19 @@ const jsonLd = [
           <div class="chart-block">
             <div class="chart-stage" id="homeBarStage"></div>
           </div>
+
+          <div class="results-actions">
+            <span class="control-hint">Copy a GitHub/ADR Markdown table with a live backlink.</span>
+            <div class="action-buttons">
+              <button type="button" class="btn-secondary" id="homeCopyMdBtn">Copy Markdown</button>
+            </div>
+          </div>
         </div>
+      </div>
+      <div class="embed-attribution">
+        <a class="embed-full-link" href={`${SITE_ORIGIN}${withBase('/')}`} target="_blank" rel="noopener noreferrer">
+          Powered by TokenScale &#8599;
+        </a>
       </div>
     </div>
   </section>
@@ -137,7 +149,9 @@ const jsonLd = [
 
 <script>
   import { calculateLlmApiCost, LLM_API_PRESETS } from '../lib/calculators/llm-api';
-  import { formatUsd, formatCompactUsd } from '../lib/format';
+  import { formatUsd, formatCompactUsd, formatCompactNumber, buildMarkdownTable } from '../lib/format';
+  import { copyTextWithFeedback } from '../lib/url-state';
+  import { SITE_ORIGIN, withBase } from '../data/simulators';
   import { renderHorizontalBarChart, CHART_COLORS } from '../lib/svg-charts';
 
   const state = { ...LLM_API_PRESETS.scaleup };
@@ -195,6 +209,29 @@ const jsonLd = [
   batchToggle.addEventListener('change', () => {
     state.useBatchApi = batchToggle.checked;
     render();
+  });
+
+  document.getElementById('homeCopyMdBtn')!.addEventListener('click', (e) => {
+    const res = calculateLlmApiCost(state);
+    const featuredIds = ['claude-haiku-5.5', 'deepseek-v4.1-flash', 'gpt-5.4-mini', 'gemini-4-carbon', 'claude-sonnet-5.5', 'gpt-5.4'];
+    const featured = featuredIds
+      .map((id) => res.models.find((m) => m.id === id))
+      .filter((m): m is NonNullable<typeof m> => Boolean(m))
+      .sort((a, b) => a.monthlyTotal - b.monthlyTotal);
+    const shareUrl = `${SITE_ORIGIN}${withBase('/llm-api-cost-calculator/')}?dailyRequests=${state.dailyRequests}&cacheHitRate=${state.cacheHitRate}&useBatchApi=${state.useBatchApi ? 1 : 0}`;
+    const md = buildMarkdownTable(
+      `LLM API Quick Bench (${formatCompactNumber(state.dailyRequests)} req/day, ${Math.round(state.cacheHitRate * 100)}% cache${state.useBatchApi ? ', Batch 50%' : ''})`,
+      ['Model', 'Provider', 'Cache Saved', 'Monthly Total'],
+      featured.map((m) => [
+        m.name,
+        m.provider,
+        m.cacheSavingsUsd > 0 ? `-${formatUsd(m.cacheSavingsUsd)}` : '$0.00',
+        `**${formatUsd(m.monthlyTotal)}**`,
+      ]),
+      shareUrl,
+      [2, 3]
+    );
+    copyTextWithFeedback(e.currentTarget as HTMLButtonElement, md, 'Markdown copied');
   });
 
   render();
