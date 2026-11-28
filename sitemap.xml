@@ -1,0 +1,35 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
+  <url>
+    <loc>https://rinchan-hoshino.github.io/tokenscale/</loc>
+    <lastmod>2026-11-26</lastmod>
+  </url>
+  <url>
+    <loc>https://rinchan-hoshino.github.io/tokenscale/llm-api-cost-calculator/</loc>
+    <lastmod>2026-11-26</lastmod>
+  </url>
+  <url>
+    <loc>https://rinchan-hoshino.github.io/tokenscale/llm-vram-calculator/</loc>
+    <lastmod>2026-11-26</lastmod>
+  </url>
+  <url>
+    <loc>https://rinchan-hoshino.github.io/tokenscale/gpu-vs-api-breakeven/</loc>
+    <lastmod>2026-11-26</lastmod>
+  </url>
+  <url>
+    <loc>https://rinchan-hoshino.github.io/tokenscale/cloud-egress-calculator/</loc>
+    <lastmod>2026-11-26</lastmod>
+  </url>
+  <url>
+    <loc>https://rinchan-hoshino.github.io/tokenscale/rag-vector-cost-calculator/</loc>
+    <lastmod>2026-11-26</lastmod>
+  </url>
+  <url>
+    <loc>https://rinchan-hoshino.github.io/tokenscale/voice-ai-cost-calculator/</loc>
+    <lastmod>2026-11-26</lastmod>
+  </url>
+  <url>
+    <loc>https://rinchan-hoshino.github.io/tokenscale/about/</loc>
+    <lastmod>2026-11-26</lastmod>
+  </url>
+</urlset>

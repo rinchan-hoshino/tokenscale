@@ -1,0 +1,4 @@
+User-agent: *
+Allow: /
+
+Sitemap: https://rinchan-hoshino.github.io/tokenscale/sitemap.xml
