@@ -59,7 +59,12 @@ import pricing from '../../data/pricing-2026.json';
           <tbody>
             {pricing.llmApiModels.map((m) => (
               <tr>
-                <td><strong>{m.name}</strong></td>
+                <td>
+                  <strong>{m.name}</strong>
+                  {'tierNote' in m && m.tierNote && (
+                    <div style="font-size:var(--text-sm);color:var(--ink-secondary);margin-top:2px;">{m.tierNote}</div>
+                  )}
+                </td>
                 <td>{m.provider}</td>
                 <td>{m.tier}</td>
                 <td class="num">${m.inputPer1M.toFixed(2)}</td>

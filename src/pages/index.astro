@@ -67,7 +67,7 @@ const jsonLd = [
             <input class="toggle-checkbox" id="homeBatchToggle" type="checkbox" />
           </div>
 
-          <a href={apiSimHref} class="btn-primary" style="margin-top:auto;">Open full 15-model simulator</a>
+          <a href={apiSimHref} class="btn-primary" style="margin-top:auto;">Open full {pricing.llmApiModels.length}-model simulator</a>
         </div>
 
         <div class="results-pane">
@@ -78,7 +78,7 @@ const jsonLd = [
               <p class="kpi-sub" id="homeKpiCheapestName">—</p>
             </div>
             <div class="kpi-cell">
-              <p class="kpi-label">GPT-5.4 monthly</p>
+              <p class="kpi-label">GPT-6.2 Sol monthly</p>
               <p class="kpi-value" id="homeKpiGpt">$0</p>
               <p class="kpi-sub" id="homeKpiGptSub">3.2K sys + 1.2K in / 700 out</p>
             </div>
@@ -164,7 +164,7 @@ const jsonLd = [
 
   function render() {
     const res = calculateLlmApiCost(state);
-    const gpt = res.models.find((m) => m.id === 'gpt-5.4') ?? res.models[0];
+    const gpt = res.models.find((m) => m.id === 'gpt-6.2-sol') ?? res.models[0];
     const claude = res.models.find((m) => m.id === 'claude-sonnet-5.5') ?? res.flagshipModel;
 
     document.getElementById('homeKpiCheapest')!.textContent = formatUsd(res.cheapestModel.monthlyTotal);
@@ -173,7 +173,7 @@ const jsonLd = [
     document.getElementById('homeKpiClaude')!.textContent = formatUsd(claude.monthlyTotal);
     document.getElementById('homeKpiClaudeSave')!.textContent = `Cache saves ${formatUsd(claude.cacheSavingsUsd)}/mo`;
 
-    const featuredIds = ['claude-haiku-5.5', 'deepseek-v4.1-flash', 'gpt-5.4-mini', 'gemini-4-carbon', 'claude-sonnet-5.5', 'gpt-5.4'];
+    const featuredIds = ['claude-haiku-5.5', 'deepseek-v4.1-flash', 'gpt-6.1-terra', 'gemini-4-carbon', 'claude-sonnet-5.5', 'gpt-6.2-sol'];
     const featured = featuredIds
       .map((id) => res.models.find((m) => m.id === id))
       .filter((m): m is NonNullable<typeof m> => Boolean(m))
@@ -184,8 +184,8 @@ const jsonLd = [
         label: m.name,
         value: m.monthlyTotal,
         displayValue: formatCompactUsd(m.monthlyTotal),
-        color: idx === 0 ? CHART_COLORS[1] : m.id === 'gpt-5.4' ? CHART_COLORS[0] : '#475569',
-        highlight: idx === 0 || m.id === 'gpt-5.4',
+        color: idx === 0 ? CHART_COLORS[1] : m.id === 'gpt-6.2-sol' ? CHART_COLORS[0] : '#475569',
+        highlight: idx === 0 || m.id === 'gpt-6.2-sol',
       })),
       { title: 'Featured LLM Monthly Cost Comparison' }
     );
@@ -213,7 +213,7 @@ const jsonLd = [
 
   document.getElementById('homeCopyMdBtn')!.addEventListener('click', (e) => {
     const res = calculateLlmApiCost(state);
-    const featuredIds = ['claude-haiku-5.5', 'deepseek-v4.1-flash', 'gpt-5.4-mini', 'gemini-4-carbon', 'claude-sonnet-5.5', 'gpt-5.4'];
+    const featuredIds = ['claude-haiku-5.5', 'deepseek-v4.1-flash', 'gpt-6.1-terra', 'gemini-4-carbon', 'claude-sonnet-5.5', 'gpt-6.2-sol'];
     const featured = featuredIds
       .map((id) => res.models.find((m) => m.id === id))
       .filter((m): m is NonNullable<typeof m> => Boolean(m))

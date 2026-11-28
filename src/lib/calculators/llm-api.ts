@@ -76,6 +76,30 @@ function clamp(v: number, min: number, max: number): number {
   return Math.min(max, Math.max(min, Number.isFinite(v) ? v : min));
 }
 
+interface LongContextTier {
+  thresholdTokens: number;
+  inclusive: boolean;
+  inputPer1M: number;
+  cachedInputPer1M: number;
+  outputPer1M: number;
+}
+
+interface LlmPricingModel {
+  id: string;
+  name: string;
+  provider: string;
+  tier: string;
+  contextWindow?: number;
+  inputPer1M: number;
+  cachedInputPer1M: number;
+  outputPer1M: number;
+  supportsBatch: boolean;
+  batchDiscount: number;
+  isReasoning: boolean;
+  longContextTier?: LongContextTier;
+  tierNote?: string;
+}
+
 export function calculateLlmApiCost(raw: LlmApiInput): LlmApiResult {
   const dailyRequests = clamp(raw.dailyRequests, 1, 10_000_000);
   const systemPromptTokens = clamp(raw.systemPromptTokens, 0, 200_000);
@@ -90,21 +114,33 @@ export function calculateLlmApiCost(raw: LlmApiInput): LlmApiResult {
   const monthlyInputTokensM = (monthlyRequests * totalInputPerReq) / 1_000_000;
   const monthlyOutputTokensM = (monthlyRequests * outputTokens) / 1_000_000;
 
-  const computeForModel = (m: (typeof pricing.llmApiModels)[number], hitRate: number): LlmModelCost => {
-    const discount = useBatchApi && m.supportsBatch ? m.batchDiscount : 1.0;
+  const catalog = pricing.llmApiModels as LlmPricingModel[];
+
+  const computeForModel = (m: LlmPricingModel, hitRate: number): LlmModelCost => {
+    const discountMultiplier = useBatchApi && m.supportsBatch ? 1 - m.batchDiscount : 1.0;
+    const useLongContext = Boolean(
+      m.longContextTier &&
+        (m.longContextTier.inclusive
+          ? totalInputPerReq >= m.longContextTier.thresholdTokens
+          : totalInputPerReq > m.longContextTier.thresholdTokens)
+    );
+    const inputPer1M = useLongContext ? m.longContextTier!.inputPer1M : m.inputPer1M;
+    const cachedInputPer1M = useLongContext ? m.longContextTier!.cachedInputPer1M : m.cachedInputPer1M;
+    const outputPer1M = useLongContext ? m.longContextTier!.outputPer1M : m.outputPer1M;
+
     const cachedSystemTokensM = (monthlyRequests * systemPromptTokens * hitRate) / 1_000_000;
     const uncachedInputTokensM =
       (monthlyRequests * (systemPromptTokens * (1 - hitRate) + dynamicInputTokens)) / 1_000_000;
     const effectiveOutputTokensM =
       (monthlyRequests * outputTokens * (m.isReasoning ? reasoningMultiplier : 1.0)) / 1_000_000;
 
-    const monthlyInputCost = uncachedInputTokensM * m.inputPer1M * discount;
-    const monthlyCachedCost = cachedSystemTokensM * m.cachedInputPer1M * discount;
-    const monthlyOutputCost = effectiveOutputTokensM * m.outputPer1M * discount;
+    const monthlyInputCost = uncachedInputTokensM * inputPer1M * discountMultiplier;
+    const monthlyCachedCost = cachedSystemTokensM * cachedInputPer1M * discountMultiplier;
+    const monthlyOutputCost = effectiveOutputTokensM * outputPer1M * discountMultiplier;
     const monthlyTotal = monthlyInputCost + monthlyCachedCost + monthlyOutputCost;
 
     const monthlyWithoutCache =
-      (monthlyInputTokensM * m.inputPer1M + effectiveOutputTokensM * m.outputPer1M) * discount;
+      (monthlyInputTokensM * inputPer1M + effectiveOutputTokensM * outputPer1M) * discountMultiplier;
     const cacheSavingsUsd = Math.max(0, monthlyWithoutCache - monthlyTotal);
     const costPer1kRequests = (monthlyTotal / monthlyRequests) * 1000;
 
@@ -124,7 +160,7 @@ export function calculateLlmApiCost(raw: LlmApiInput): LlmApiResult {
     };
   };
 
-  const models = pricing.llmApiModels
+  const models = catalog
     .map((m) => computeForModel(m, cacheHitRate))
     .sort((a, b) => a.monthlyTotal - b.monthlyTotal);
 
@@ -132,9 +168,9 @@ export function calculateLlmApiCost(raw: LlmApiInput): LlmApiResult {
   const flagshipModel = models.find((m) => m.id === 'claude-sonnet-5.5') ?? models[models.length - 1];
 
   const cacheRates = [0, 0.25, 0.5, 0.75, 0.95];
-  const sensitivityIds = ['claude-sonnet-5.5', 'gpt-5.4', 'gemini-4-carbon', 'gpt-5.4-mini'];
+  const sensitivityIds = ['claude-sonnet-5.5', 'gpt-6.2-sol', 'gemini-4-carbon', 'gpt-6.1-terra'];
   const series = sensitivityIds
-    .map((id) => pricing.llmApiModels.find((m) => m.id === id))
+    .map((id) => catalog.find((m) => m.id === id))
     .filter((m): m is NonNullable<typeof m> => Boolean(m))
     .map((m) => ({
       id: m.id,

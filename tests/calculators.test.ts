@@ -5,12 +5,14 @@ import { calculateGpuBreakeven, GPU_BREAKEVEN_PRESETS } from '../src/lib/calcula
 import { calculateCloudEgress, CLOUD_EGRESS_PRESETS } from '../src/lib/calculators/cloud-egress';
 import { calculateRagVectorCost, RAG_VECTOR_PRESETS } from '../src/lib/calculators/rag-vector';
 import { calculateVoiceAiCost, VOICE_AI_PRESETS } from '../src/lib/calculators/voice-ai';
+import pricing from '../src/data/pricing-2026.json';
 import { buildMarkdownTable } from '../src/lib/format';
 
 describe('1. LLM API & Prompt Caching Simulator', () => {
   it('computes positive costs and sorts ascending', () => {
     const res = calculateLlmApiCost(LLM_API_PRESETS.scaleup);
-    expect(res.models.length).toBe(15);
+    expect(res.models.length).toBe(pricing.llmApiModels.length);
+    expect(res.models.length).toBe(17);
     expect(res.cheapestModel.monthlyTotal).toBeGreaterThan(0);
     for (let i = 1; i < res.models.length; i++) {
       expect(res.models[i].monthlyTotal).toBeGreaterThanOrEqual(res.models[i - 1].monthlyTotal);
@@ -26,12 +28,46 @@ describe('1. LLM API & Prompt Caching Simulator', () => {
     expect(sonnetHigh.cacheSavingsUsd).toBeGreaterThan(0);
   });
 
-  it('batch API halves cost for batch-supported models', () => {
+  it('batch API applies per-model batch discount (50% off for GPT-6.2 Sol, 20% off for Grok 4.7)', () => {
     const regular = calculateLlmApiCost({ ...LLM_API_PRESETS.mvp, useBatchApi: false });
     const batch = calculateLlmApiCost({ ...LLM_API_PRESETS.mvp, useBatchApi: true });
-    const gptReg = regular.models.find((m) => m.id === 'gpt-5.4')!;
-    const gptBatch = batch.models.find((m) => m.id === 'gpt-5.4')!;
+    const gptReg = regular.models.find((m) => m.id === 'gpt-6.2-sol')!;
+    const gptBatch = batch.models.find((m) => m.id === 'gpt-6.2-sol')!;
     expect(gptBatch.monthlyTotal).toBeCloseTo(gptReg.monthlyTotal * 0.5, 4);
+
+    const grokReg = regular.models.find((m) => m.id === 'grok-4.7')!;
+    const grokBatch = batch.models.find((m) => m.id === 'grok-4.7')!;
+    expect(grokBatch.monthlyTotal).toBeCloseTo(grokReg.monthlyTotal * 0.8, 4);
+  });
+
+  it('applies long-context pricing tiers (>100K for Claude Haiku 5.5, >=200K for Grok 4.7)', () => {
+    const shortHaiku = calculateLlmApiCost({
+      ...LLM_API_PRESETS.mvp,
+      systemPromptTokens: 100_000,
+      dynamicInputTokens: 0,
+      cacheHitRate: 0,
+    }).models.find((m) => m.id === 'claude-haiku-5.5')!;
+    const longHaiku = calculateLlmApiCost({
+      ...LLM_API_PRESETS.mvp,
+      systemPromptTokens: 100_000,
+      dynamicInputTokens: 1,
+      cacheHitRate: 0,
+    }).models.find((m) => m.id === 'claude-haiku-5.5')!;
+    expect(longHaiku.monthlyTotal).toBeGreaterThan(shortHaiku.monthlyTotal * 4.9);
+
+    const shortGrok = calculateLlmApiCost({
+      ...LLM_API_PRESETS.mvp,
+      systemPromptTokens: 199_999,
+      dynamicInputTokens: 0,
+      cacheHitRate: 0,
+    }).models.find((m) => m.id === 'grok-4.7')!;
+    const longGrok = calculateLlmApiCost({
+      ...LLM_API_PRESETS.mvp,
+      systemPromptTokens: 200_000,
+      dynamicInputTokens: 0,
+      cacheHitRate: 0,
+    }).models.find((m) => m.id === 'grok-4.7')!;
+    expect(longGrok.monthlyTotal).toBeGreaterThan(shortGrok.monthlyTotal * 1.9);
   });
 });
 
@@ -136,13 +172,13 @@ describe('7. Markdown Export & Backlink Formatter', () => {
     const md = buildMarkdownTable(
       'LLM API Cost',
       ['Model', 'Monthly Total'],
-      [['GPT-5.4 | Batch', '$1,200']],
+      [['GPT-6.2 Sol | Batch', '$1,200']],
       'https://rinchan-hoshino.github.io/tokenscale/llm-api-cost-calculator/?dailyRequests=45000',
       [1]
     );
     expect(md).toContain('### LLM API Cost');
     expect(md).toContain('| :--- | ---: |');
-    expect(md).toContain('| GPT-5.4 \\| Batch | $1,200 |');
+    expect(md).toContain('| GPT-6.2 Sol \\| Batch | $1,200 |');
     expect(md).toContain('*Simulated with [TokenScale](https://rinchan-hoshino.github.io/tokenscale/llm-api-cost-calculator/?dailyRequests=45000)*');
   });
 });

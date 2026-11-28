@@ -1,7 +1,10 @@
+import fs from 'node:fs';
 import path from 'node:path';
 import { chromium } from 'playwright-core';
 
 const OUT_PATH = path.resolve(process.cwd(), 'public/og-card.png');
+const pricing = JSON.parse(fs.readFileSync(path.resolve(process.cwd(), 'src/data/pricing-2026.json'), 'utf8'));
+const modelCount = pricing.llmApiModels.length;
 
 const html = `<!doctype html>
 <html lang="en">
@@ -233,7 +236,7 @@ const html = `<!doctype html>
       <div class="kpis">
         <div>
           <div class="kpi-l">Lowest / mo</div>
-          <div class="kpi-v blue">$1,094</div>
+          <div class="kpi-v blue">$775</div>
         </div>
         <div>
           <div class="kpi-l">Cache Savings</div>
@@ -241,34 +244,34 @@ const html = `<!doctype html>
         </div>
         <div>
           <div class="kpi-l">Models</div>
-          <div class="kpi-v">15 Frontier</div>
+          <div class="kpi-v">${modelCount} Frontier</div>
         </div>
       </div>
       <div class="bars">
         <div class="bar-row">
           <span class="bar-label">Claude Haiku 5.5</span>
-          <div class="bar-track"><div class="bar-fill" style="width:12%;background:#0F766E"></div></div>
-          <span class="bar-val">$1.1k</span>
+          <div class="bar-track"><div class="bar-fill" style="width:8%;background:#0F766E"></div></div>
+          <span class="bar-val">$0.8k</span>
         </div>
         <div class="bar-row">
           <span class="bar-label">DeepSeek V4.1</span>
-          <div class="bar-track"><div class="bar-fill" style="width:20%;background:#475569"></div></div>
+          <div class="bar-track"><div class="bar-fill" style="width:16%;background:#475569"></div></div>
           <span class="bar-val">$2.0k</span>
         </div>
         <div class="bar-row">
-          <span class="bar-label">GPT-5.4 mini</span>
-          <div class="bar-track"><div class="bar-fill" style="width:46%;background:#475569"></div></div>
-          <span class="bar-val">$9.7k</span>
+          <span class="bar-label">GPT-6.1 Terra</span>
+          <div class="bar-track"><div class="bar-fill" style="width:50%;background:#475569"></div></div>
+          <span class="bar-val">$12.3k</span>
         </div>
         <div class="bar-row">
           <span class="bar-label">Claude Sonnet 5.5</span>
-          <div class="bar-track"><div class="bar-fill" style="width:74%;background:#1D4ED8"></div></div>
-          <span class="bar-val">$22.5k</span>
+          <div class="bar-track"><div class="bar-fill" style="width:100%;background:#1D4ED8"></div></div>
+          <span class="bar-val">$24.6k</span>
         </div>
         <div class="bar-row">
-          <span class="bar-label">GPT-5.4</span>
+          <span class="bar-label">GPT-6.2 Sol</span>
           <div class="bar-track"><div class="bar-fill" style="width:100%;background:#1E293B"></div></div>
-          <span class="bar-val">$33.1k</span>
+          <span class="bar-val">$24.6k</span>
         </div>
       </div>
     </div>
